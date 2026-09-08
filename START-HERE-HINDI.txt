@@ -28,7 +28,7 @@ AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
    Database\03_RestoreDatabase.sql
       -> Windows SQL Server / SQL Express par backup restore karne ke liye
 
-5) SQL Server / SQL Express 2022 ya newer server par:
+5) SQL Server / SQL Express 2019 ya newer server par:
 
    C:\SuvidhaPOSBackup folder banayein.
    DatabaseBackup\SuvidhaPOSCentral.bak ko copy karke:
@@ -39,7 +39,7 @@ AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
 
    NOTE:
    Build backup SQL Server 2022 engine se banta hai, isliye is .bak ko
-   SQL Server / SQL Express 2022 ya newer par restore karein.
+   SQL Server / SQL Express 2019 ya newer par restore karein.
 
 6) Agar IIS aur SQL Server SAME Windows server par hain aur Trusted_Connection use karte hain:
    Database\05_GrantIISAppPool.sql run karein.
