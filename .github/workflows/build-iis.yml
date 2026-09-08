@@ -66,18 +66,18 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/artifacts/database-backup"
           chmod 777 "$GITHUB_WORKSPACE/artifacts/database-backup"
 
-      - name: Start SQL Server 2022
+      - name: Start SQL Server 2019
         shell: bash
         run: |
           set -euo pipefail
-          docker pull mcr.microsoft.com/mssql/server:2022-latest
+          docker pull mcr.microsoft.com/mssql/server:2019-latest
           docker run --name suvidhapos-sql \
             -e ACCEPT_EULA=Y \
             -e MSSQL_PID=Developer \
             -e MSSQL_SA_PASSWORD="$MSSQL_SA_PASSWORD" \
             -p 1433:1433 \
             -v "$GITHUB_WORKSPACE/artifacts/database-backup:/var/opt/mssql/backup" \
-            -d mcr.microsoft.com/mssql/server:2022-latest
+            -d mcr.microsoft.com/mssql/server:2019-latest
 
       - name: Wait for SQL Server
         shell: bash
@@ -136,10 +136,10 @@ jobs:
           {
             echo "SuvidhaPOSCentral build backup"
             echo "Generated UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            echo "Source engine: SQL Server 2022 Developer container"
+            echo "Source engine: SQL Server 2019 Developer container"
             echo "Database: SuvidhaPOSCentral"
             echo "Validation: RESTORE VERIFYONLY WITH CHECKSUM passed"
-            echo "Restore target: SQL Server / SQL Express 2022 or newer"
+            echo "Restore target: SQL Server / SQL Express 2019 or newer"
             echo "Contents: clean schema baseline; no default admin password or production secrets"
           } > "$GITHUB_WORKSPACE/artifacts/database-backup/BACKUP-INFO.txt"
 
