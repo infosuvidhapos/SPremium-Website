@@ -1,0 +1,41 @@
+SuvidhaPOS Central - MANUAL SQL CONFIG
+=====================================
+
+Aapko primarily ye file edit karni hai:
+
+src\SuvidhaPOS.Central\appsettings.Production.json
+
+GitHub build ke baad ye file automatically IIS-Publish folder me bhi milegi:
+
+IIS-Publish\appsettings.Production.json
+
+SQL Server address already set hai:
+
+192.168.1.50,1433
+
+Bas 2 values replace karein:
+
+1) CHANGE_SQL_PASSWORD_HERE
+   -> SQL login suvidhapos_app ka real password
+
+2) CHANGE_SETUP_KEY_HERE
+   -> First Admin create karne ke liye apni secret setup key
+
+Current file:
+
+{
+  "ConnectionStrings": {
+    "CentralDb": "Server=192.168.1.50,1433;Database=SuvidhaPOSCentral;User Id=suvidhapos_app;Password=CHANGE_SQL_PASSWORD_HERE;Encrypt=True;TrustServerCertificate=True;"
+  },
+  "Security": {
+    "SetupKey": "CHANGE_SETUP_KEY_HERE",
+    "RequireHttps": false
+  }
+}
+
+IMPORTANT:
+- SQL Server par SuvidhaPOSCentral.bak restore karein.
+- Agar suvidhapos_app SQL login nahi hai to Database\04_CreateAppLogin.sql edit/run karein.
+- 04_CreateAppLogin.sql me bhi SAME password dalna hai.
+- Production internet hosting ke liye HTTPS setup ke baad RequireHttps ko true karein.
+- Real SQL password public GitHub repository me commit na karein. Private repo use karein ya IIS server par build ke baad file edit karein.
