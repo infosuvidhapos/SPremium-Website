@@ -121,8 +121,18 @@ jobs:
             SQLCMD=/opt/mssql-tools/bin/sqlcmd
           fi
           docker exec suvidhapos-sql "$SQLCMD" -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -i /tmp/06_CreateBuildBackup.sql
-          test -s "$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak"
-          sha256sum "$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak" > "$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak.sha256"
+
+          BAK="$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak"
+
+          # SQL Server runs as the mssql user inside the container. Files created
+          # on the bind mount can therefore be unreadable by the GitHub runner.
+          # Normalize ownership and permissions before hashing/uploading.
+          docker exec suvidhapos-sql chmod 0644 /var/opt/mssql/backup/SuvidhaPOSCentral.bak
+          sudo chown "$(id -u):$(id -g)" "$BAK"
+          chmod 0644 "$BAK"
+
+          test -s "$BAK"
+          sha256sum "$BAK" > "$BAK.sha256"
           {
             echo "SuvidhaPOSCentral build backup"
             echo "Generated UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
