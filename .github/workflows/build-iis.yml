@@ -1,0 +1,195 @@
+name: Build IIS + SQL Backup
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  web-build:
+    name: Build .NET 10 IIS files
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj
+
+      - name: Build
+        run: dotnet build .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj -c Release --no-restore
+
+      - name: Publish for IIS
+        run: dotnet publish .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj -c Release --no-build -o .\artifacts\iis-publish
+
+      - name: Validate IIS publish
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .\artifacts\iis-publish\SuvidhaPOS.Central.dll)) { throw "Published DLL missing" }
+          if (-not (Test-Path .\artifacts\iis-publish\web.config)) { throw "web.config missing" }
+
+      - name: Upload IIS stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: iis-publish-stage
+          path: .\artifacts\iis-publish
+          if-no-files-found: error
+          retention-days: 1
+
+  sql-backup:
+    name: Create verified SQL Server .bak
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate temporary SQL password
+        shell: bash
+        run: |
+          set -euo pipefail
+          PASS="Build!$(openssl rand -hex 16)Aa1#"
+          echo "MSSQL_SA_PASSWORD=$PASS" >> "$GITHUB_ENV"
+
+      - name: Prepare backup directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/database-backup"
+          chmod 777 "$GITHUB_WORKSPACE/artifacts/database-backup"
+
+      - name: Start SQL Server 2022
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull mcr.microsoft.com/mssql/server:2022-latest
+          docker run --name suvidhapos-sql \
+            -e ACCEPT_EULA=Y \
+            -e MSSQL_PID=Developer \
+            -e MSSQL_SA_PASSWORD="$MSSQL_SA_PASSWORD" \
+            -p 1433:1433 \
+            -v "$GITHUB_WORKSPACE/artifacts/database-backup:/var/opt/mssql/backup" \
+            -d mcr.microsoft.com/mssql/server:2022-latest
+
+      - name: Wait for SQL Server
+        shell: bash
+        run: |
+          set -euo pipefail
+          if docker exec suvidhapos-sql test -x /opt/mssql-tools18/bin/sqlcmd; then
+            SQLCMD=/opt/mssql-tools18/bin/sqlcmd
+          else
+            SQLCMD=/opt/mssql-tools/bin/sqlcmd
+          fi
+          for i in $(seq 1 60); do
+            if docker exec suvidhapos-sql "$SQLCMD" -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs suvidhapos-sql
+          exit 1
+
+      - name: Create database schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker cp Database/01_CreateDatabase.sql suvidhapos-sql:/tmp/01_CreateDatabase.sql
+          if docker exec suvidhapos-sql test -x /opt/mssql-tools18/bin/sqlcmd; then
+            SQLCMD=/opt/mssql-tools18/bin/sqlcmd
+          else
+            SQLCMD=/opt/mssql-tools/bin/sqlcmd
+          fi
+          docker exec suvidhapos-sql "$SQLCMD" -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -i /tmp/01_CreateDatabase.sql
+
+      - name: Create and verify real BAK
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker cp Database/06_CreateBuildBackup.sql suvidhapos-sql:/tmp/06_CreateBuildBackup.sql
+          if docker exec suvidhapos-sql test -x /opt/mssql-tools18/bin/sqlcmd; then
+            SQLCMD=/opt/mssql-tools18/bin/sqlcmd
+          else
+            SQLCMD=/opt/mssql-tools/bin/sqlcmd
+          fi
+          docker exec suvidhapos-sql "$SQLCMD" -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -i /tmp/06_CreateBuildBackup.sql
+          test -s "$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak"
+          sha256sum "$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak" > "$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak.sha256"
+          {
+            echo "SuvidhaPOSCentral build backup"
+            echo "Generated UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Source engine: SQL Server 2022 Developer container"
+            echo "Database: SuvidhaPOSCentral"
+            echo "Validation: RESTORE VERIFYONLY WITH CHECKSUM passed"
+            echo "Restore target: SQL Server / SQL Express 2022 or newer"
+            echo "Contents: clean schema baseline; no default admin password or production secrets"
+          } > "$GITHUB_WORKSPACE/artifacts/database-backup/BACKUP-INFO.txt"
+
+      - name: Upload SQL backup stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: sql-backup-stage
+          path: artifacts/database-backup
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: SQL container logs on failure
+        if: failure()
+        shell: bash
+        run: docker logs suvidhapos-sql || true
+
+  package:
+    name: Assemble ready IIS + BAK package
+    needs: [web-build, sql-backup]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create package folders
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .\artifacts\package\IIS-Publish | Out-Null
+          New-Item -ItemType Directory -Force -Path .\artifacts\package\DatabaseBackup | Out-Null
+
+      - name: Download IIS build
+        uses: actions/download-artifact@v4
+        with:
+          name: iis-publish-stage
+          path: artifacts/package/IIS-Publish
+
+      - name: Download verified SQL backup
+        uses: actions/download-artifact@v4
+        with:
+          name: sql-backup-stage
+          path: artifacts/package/DatabaseBackup
+
+      - name: Assemble deployment package
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .\artifacts\package\IIS-Publish\SuvidhaPOS.Central.dll)) { throw "IIS DLL missing" }
+          if (-not (Test-Path .\artifacts\package\DatabaseBackup\SuvidhaPOSCentral.bak)) { throw "SQL .bak missing" }
+          Copy-Item .\Database .\artifacts\package\Database -Recurse
+          Copy-Item .\Deploy .\artifacts\package\Deploy -Recurse
+          Copy-Item .\README.md .\artifacts\package\README.md
+          Copy-Item .\START-HERE-HINDI.txt .\artifacts\package\START-HERE-HINDI.txt
+          Get-ChildItem .\artifacts\package -Recurse -File | Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $($_.Path.Replace((Resolve-Path .\artifacts\package).Path + '\',''))" } |
+            Set-Content .\artifacts\package\SHA256SUMS.txt
+          Compress-Archive -Path .\artifacts\package\* -DestinationPath .\artifacts\SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP.zip -Force
+
+      - name: Upload final ready package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP
+          path: .\artifacts\SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP.zip
+          if-no-files-found: error
+          retention-days: 30
