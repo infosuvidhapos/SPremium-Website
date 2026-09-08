@@ -1,5 +1,5 @@
 /*
-  Restore the GitHub-build generated backup on Windows SQL Server / SQL Express 2022+.
+  Restore the GitHub-build generated backup on Windows SQL Server / SQL Express 2019+.
 
   1) Copy DatabaseBackup\SuvidhaPOSCentral.bak to:
        C:\SuvidhaPOSBackup\SuvidhaPOSCentral.bak
