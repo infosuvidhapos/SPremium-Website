@@ -29,7 +29,7 @@ Production-oriented central admin website/API for SuvidhaPOS licensing and outle
 5. The final artifact is `SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP`.
 6. Inside it, `IIS-Publish` is the IIS website folder and `DatabaseBackup/SuvidhaPOSCentral.bak` is a real verified SQL Server backup.
 
-The GitHub workflow builds `net10.0` on Windows, starts a temporary SQL Server 2022 container on a Linux runner, creates the schema, runs `BACKUP DATABASE`, validates it with `RESTORE VERIFYONLY WITH CHECKSUM`, then packages IIS + the `.bak` together.
+The GitHub workflow builds `net10.0` on Windows, starts a temporary SQL Server 2019 container on a Linux runner, creates the schema, runs `BACKUP DATABASE`, validates it with `RESTORE VERIFYONLY WITH CHECKSUM`, then packages IIS + the `.bak` together.
 
 ## 2. Create SQL database
 
@@ -101,15 +101,15 @@ DatabaseBackup/SuvidhaPOSCentral.bak.sha256
 DatabaseBackup/BACKUP-INFO.txt
 ```
 
-This is a real SQL Server backup created during the Action run, not a placeholder. The build uses SQL Server 2022 Developer only as a temporary build engine; the backup contains a clean schema baseline and no production password/secret.
+This is a real SQL Server backup created during the Action run, not a placeholder. The build uses SQL Server 2019 Developer only as a temporary build engine; the backup contains a clean schema baseline and no production password/secret.
 
-To deploy on Windows SQL Server / SQL Express 2022 or newer:
+To deploy on Windows SQL Server / SQL Express 2019 or newer:
 
 1. Copy `DatabaseBackup\SuvidhaPOSCentral.bak` to `C:\SuvidhaPOSBackup\SuvidhaPOSCentral.bak`.
 2. Run `Database/03_RestoreDatabase.sql` in SSMS.
 3. If IIS and SQL Server are on the same machine with Trusted Connection, run `Database/05_GrantIISAppPool.sql`.
 
-A SQL Server backup cannot be restored to an older major SQL Server version than the engine that created it, so this build-generated `.bak` is intended for SQL Server / SQL Express 2022 or newer. The plain `01_CreateDatabase.sql` remains available when a script-based deployment is preferred.
+A SQL Server backup cannot be restored to an older major SQL Server version than the engine that created it, so this build-generated `.bak` is intended for SQL Server / SQL Express 2019 or newer. The plain `01_CreateDatabase.sql` remains available when a script-based deployment is preferred.
 
 ## Important license authority rule
 
