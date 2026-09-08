@@ -1,0 +1,71 @@
+SuvidhaPOS Central - .NET 10 LTS - START HERE
+================================================
+
+AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
+
+1) Is poore folder ko GitHub repository me upload/push karein.
+
+2) GitHub me:
+   Actions -> Build IIS + SQL Backup -> Run workflow
+
+3) Build complete hone ke baad artifact download karein:
+   SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP
+
+4) Artifact ZIP ke andar:
+
+   IIS-Publish\
+      -> actual IIS website files / DLL / web.config
+
+   DatabaseBackup\SuvidhaPOSCentral.bak
+      -> REAL SQL Server backup, build ke time generate aur VERIFY kiya hua
+
+   DatabaseBackup\SuvidhaPOSCentral.bak.sha256
+      -> backup checksum file
+
+   DatabaseBackup\BACKUP-INFO.txt
+      -> backup build details
+
+   Database\03_RestoreDatabase.sql
+      -> Windows SQL Server / SQL Express par backup restore karne ke liye
+
+5) SQL Server / SQL Express 2022 ya newer server par:
+
+   C:\SuvidhaPOSBackup folder banayein.
+   DatabaseBackup\SuvidhaPOSCentral.bak ko copy karke:
+   C:\SuvidhaPOSBackup\SuvidhaPOSCentral.bak
+   rakhein.
+
+   SSMS me Database\03_RestoreDatabase.sql run karein.
+
+   NOTE:
+   Build backup SQL Server 2022 engine se banta hai, isliye is .bak ko
+   SQL Server / SQL Express 2022 ya newer par restore karein.
+
+6) Agar IIS aur SQL Server SAME Windows server par hain aur Trusted_Connection use karte hain:
+   Database\05_GrantIISAppPool.sql run karein.
+
+7) IIS-Publish folder ko server par copy karein. Example:
+   C:\Sites\SuvidhaPOSCentral
+
+8) Server PowerShell (Administrator):
+   Set-ExecutionPolicy -Scope Process Bypass
+   .\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPOSCentral" -SqlServer ".\SQLEXPRESS"
+
+   Screen par FIRST ADMIN SETUP KEY aayegi. Isko save karein.
+
+9) IIS server par .NET 10 Hosting Bundle install karein.
+
+10) IIS create karne ke liye:
+    .\Deploy\Install-IIS.ps1 -PhysicalPath "C:\Sites\SuvidhaPOSCentral" -Port 8080
+
+11) Browser me site open karein. First launch par:
+    Full Name + Email + Password + Setup Key se SuperAdmin create karein.
+
+12) Production me HTTPS certificate bind karein aur Configure-Production.ps1 ko -RequireHttps ke saath run karein.
+
+IMPORTANT SECURITY:
+- GitHub-generated backup me koi default admin password nahi hota.
+- First admin deployment ke baad Setup Key se create hota hai.
+- Store Type aur Validity central SQL/API authority hain.
+- POS local SQL/config edit karke license unlock nahi kar sakta.
+- POS -> HTTPS IIS API -> SQL Server architecture use karein.
