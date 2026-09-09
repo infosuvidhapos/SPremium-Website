@@ -53,6 +53,12 @@ jobs:
           grep -q 'RenewToDateAsync' ./src/SuvidhaPremium/Program.cs
           grep -q 'ValidUntilDate' ./src/SuvidhaPremium/Program.cs
           grep -q 'id="manualValidityDate"' ./src/SuvidhaPremium/wwwroot/index.html
+          if grep -q 'id="manualValidityWrap"[^>]*display:none' ./src/SuvidhaPremium/wwwroot/index.html; then
+            echo "manualValidityWrap must be always visible" >&2
+            exit 1
+          fi
+          grep -q 'Manual Valid Until Date (Calendar)' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'setManualDateBounds' ./src/SuvidhaPremium/wwwroot/assets/js/app.js
           grep -q 'data-days="manual"' ./src/SuvidhaPremium/wwwroot/index.html
           grep -q "renewMode==='manual'" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
           python3 - <<'PY'
@@ -65,7 +71,7 @@ jobs:
           if bad in s.replace(good, ''):
               raise SystemExit('Broken single-element period selector found')
           PY
-          grep -q 'assets/js/app.js?v=28' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'assets/js/app.js?v=31' ./src/SuvidhaPremium/wwwroot/index.html
 
       - name: Generate temporary SQL password
         shell: bash
