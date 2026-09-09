@@ -3,7 +3,7 @@ SuvidhaPremium - MANUAL SQL CONFIG
 
 Aapko primarily ye file edit karni hai:
 
-src\SuvidhaPOS.Central\appsettings.Production.json
+src\SuvidhaPremium\appsettings.Production.json
 
 GitHub build ke baad ye file automatically IIS-Publish folder me bhi milegi:
 
