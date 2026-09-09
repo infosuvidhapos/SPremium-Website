@@ -9,6 +9,41 @@ using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var storeTypes = new[]
+{
+    "Retail Shop",
+    "Pharmacy / Medical Store",
+    "Agriculture Product Store",
+    "Seeds & Fertilizer Store",
+    "Pesticide / Crop Care Store",
+    "General Store",
+    "Grocery Store",
+    "Supermarket",
+    "Wholesale Store",
+    "Distributor",
+    "FMCG Store",
+    "Cosmetics & Beauty Store",
+    "Personal Care Store",
+    "Stationery Store",
+    "Hardware Store",
+    "Electrical Store",
+    "Electronics Store",
+    "Mobile & Accessories Store",
+    "Garments Store",
+    "Footwear Store",
+    "Hardware & Sanitary Store",
+    "Auto Parts Store",
+    "Pet / Veterinary Store",
+    "Dairy Store",
+    "Bakery",
+    "Restaurant / Cafe",
+    "Sweet Shop",
+    "Department Store",
+    "Jewellery Shop",
+    "Other"
+};
+var graceDays = Math.Clamp(builder.Configuration.GetValue<int?>("Renewal:GraceDays") ?? 3, 0, 7);
+
 var cookieName = builder.Configuration["Security:CookieName"] ?? "SuvidhaPremium.Auth";
 var requireHttps = builder.Configuration.GetValue<bool>("Security:RequireHttps");
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -154,6 +189,8 @@ app.MapPost("/api/admin/outlets", async (CreateOutletRequest r, Db db, HttpConte
 {
     if (string.IsNullOrWhiteSpace(r.OutletName) || string.IsNullOrWhiteSpace(r.StoreType) || r.ValidityDays < 1 || r.ValidityDays > 3650)
         return Results.BadRequest(new { message = "Outlet name, store type and valid validity days are required." });
+    if (!storeTypes.Contains(r.StoreType.Trim(), StringComparer.OrdinalIgnoreCase))
+        return Results.BadRequest(new { message = "Invalid Store Type. Select a Store Type from SuvidhaPremium master." });
     var activationCode = ActivationCode.NewCode();
     var result = await db.CreateOutletAsync(r, ActivationCode.Hash(activationCode), CurrentAdmin(ctx));
     await db.AuditAsync(CurrentAdmin(ctx), "OUTLET_CREATED", "Outlet", result.OutletId.ToString(), $"{result.OutletName} / {result.OutletCode}", ctx);
@@ -162,6 +199,8 @@ app.MapPost("/api/admin/outlets", async (CreateOutletRequest r, Db db, HttpConte
 
 app.MapPut("/api/admin/outlets/{id:guid}", async (Guid id, UpdateOutletRequest r, Db db, HttpContext ctx) =>
 {
+    if (string.IsNullOrWhiteSpace(r.StoreType) || !storeTypes.Contains(r.StoreType.Trim(), StringComparer.OrdinalIgnoreCase))
+        return Results.BadRequest(new { message = "Invalid Store Type. Select a Store Type from SuvidhaPremium master." });
     var changed = await db.UpdateOutletAsync(id, r, CurrentAdmin(ctx));
     if (!changed) return Results.NotFound(new { message = "Outlet not found." });
     await db.AuditAsync(CurrentAdmin(ctx), "OUTLET_UPDATED", "Outlet", id.ToString(), "Outlet details/store type updated", ctx);
@@ -207,6 +246,8 @@ app.MapDelete("/api/admin/devices/{id:guid}", async (Guid id, Db db, HttpContext
 }).RequireAuthorization("ManageOutlet");
 
 // ---------- POS License APIs (public HTTPS endpoints) ----------
+app.MapGet("/api/pos/store-types", () => Results.Ok(storeTypes));
+
 app.MapGet("/api/pos/public-key", (LicenseSigner signer) => Results.Ok(new
 {
     algorithm = "PS256",
@@ -222,13 +263,16 @@ app.MapPost("/api/pos/activate", async (PosActivateRequest r, Db db, LicenseSign
     if (outlet is null || !ActivationCode.Verify(r.ActivationCode, outlet.ActivationCodeHash))
         return Results.Json(new { message = "Invalid outlet or activation code." }, statusCode: 401);
     if (outlet.IsBlocked) return Results.Json(new { status = "blocked", message = "Outlet is blocked by central admin." }, statusCode: 403);
-    if (outlet.ValidUntilUtc < DateTime.UtcNow) return Results.Json(new { status = "expired", validUntilUtc = outlet.ValidUntilUtc, message = "License has expired." }, statusCode: 403);
+    var activationDaysLapsed = DateOnly.FromDateTime(DateTime.UtcNow).DayNumber - DateOnly.FromDateTime(outlet.ValidUntilUtc).DayNumber;
+    if (activationDaysLapsed > graceDays)
+        return Results.Json(new { status = "expired", validUntilUtc = outlet.ValidUntilUtc, graceDays, message = "License grace period has ended. Renew to activate." }, statusCode: 403);
 
     var bind = await db.BindDeviceAsync(outlet.OutletId, r.DeviceFingerprint.Trim(), r.DeviceName?.Trim());
     if (!bind.Success) return Results.Json(new { status = "device_conflict", message = bind.Message }, statusCode: 409);
     var token = signer.Issue(outlet, r.DeviceFingerprint.Trim());
     await db.AuditAsync(null, "POS_ACTIVATED", "Outlet", outlet.OutletId.ToString(), $"Device {r.DeviceName ?? "POS"} activated", ctx);
-    return Results.Ok(new LicenseResponse("active", token, outlet.ValidUntilUtc, outlet.StoreType, outlet.OutletCode, DateTime.UtcNow, signer.KeyId));
+    var activationStatus = activationDaysLapsed > 0 ? "grace" : "active";
+    return Results.Ok(new LicenseResponse(activationStatus, token, outlet.ValidUntilUtc, outlet.StoreType, outlet.OutletCode, DateTime.UtcNow, signer.KeyId));
 });
 
 app.MapPost("/api/pos/check", async (PosCheckRequest r, Db db, LicenseSigner signer, HttpContext ctx) =>
@@ -240,10 +284,11 @@ app.MapPost("/api/pos/check", async (PosCheckRequest r, Db db, LicenseSigner sig
     if (outlet.DeviceBlocked) return Results.Json(new { status = "device_blocked", message = "This device is blocked." }, statusCode: 403);
     if (outlet.IsBlocked) return Results.Json(new { status = "blocked", message = "Outlet is blocked by central admin." }, statusCode: 403);
     await db.TouchDeviceAsync(outlet.DeviceId);
-    if (outlet.ValidUntilUtc < DateTime.UtcNow)
-        return Results.Ok(new { status = "expired", validUntilUtc = outlet.ValidUntilUtc, serverTimeUtc = DateTime.UtcNow });
+    var checkDaysLapsed = DateOnly.FromDateTime(DateTime.UtcNow).DayNumber - DateOnly.FromDateTime(outlet.ValidUntilUtc).DayNumber;
+    if (checkDaysLapsed > graceDays)
+        return Results.Ok(new { status = "expired", validUntilUtc = outlet.ValidUntilUtc, graceDays, serverTimeUtc = DateTime.UtcNow });
     var token = signer.Issue(outlet, r.DeviceFingerprint.Trim());
-    return Results.Ok(new LicenseResponse("active", token, outlet.ValidUntilUtc, outlet.StoreType, outlet.OutletCode, DateTime.UtcNow, signer.KeyId));
+    return Results.Ok(new LicenseResponse(checkDaysLapsed > 0 ? "grace" : "active", token, outlet.ValidUntilUtc, outlet.StoreType, outlet.OutletCode, DateTime.UtcNow, signer.KeyId));
 });
 
 app.MapPost("/api/pos/profile", async (PosProfileRequest r, Db db, HttpContext ctx) =>
@@ -259,9 +304,20 @@ app.MapPost("/api/pos/profile", async (PosProfileRequest r, Db db, HttpContext c
     return Results.Ok(new { message = "Outlet profile updated. Store Type and Validity remain centrally controlled." });
 });
 
+app.MapGet("/renew/{outletCode}", (string outletCode, IConfiguration cfg) =>
+{
+    var rawNumber = cfg["Renewal:WhatsAppNumber"] ?? "";
+    var number = new string(rawNumber.Where(char.IsDigit).ToArray());
+    var text = Uri.EscapeDataString($"Hello SuvidhaPremium, I want to renew billing subscription for Outlet Code {outletCode.Trim().ToUpperInvariant()}.");
+    var url = string.IsNullOrWhiteSpace(number)
+        ? $"https://wa.me/?text={text}"
+        : $"https://wa.me/{number}?text={text}";
+    return Results.Redirect(url);
+});
+
 app.MapGet("/health", async (Db db) =>
 {
-    try { return Results.Ok(new { status = "ok", database = await db.PingAsync(), appVersion = "2.0.0", utc = DateTime.UtcNow }); }
+    try { return Results.Ok(new { status = "ok", database = await db.PingAsync(), appVersion = "2.2.0", utc = DateTime.UtcNow }); }
     catch { return Results.Json(new { status = "degraded", database = false, appVersion = "2.0.0", utc = DateTime.UtcNow }, statusCode: 503); }
 });
 app.Run();
@@ -315,9 +371,9 @@ sealed class Db
         await using var c=Conn(); await c.OpenAsync();
         var sql=@"SELECT
 COUNT(*) TotalOutlets,
-SUM(CASE WHEN IsBlocked=0 AND ValidUntilUtc>=SYSUTCDATETIME() THEN 1 ELSE 0 END) ActiveLicenses,
-SUM(CASE WHEN IsBlocked=0 AND ValidUntilUtc>=SYSUTCDATETIME() AND ValidUntilUtc<DATEADD(day,11,SYSUTCDATETIME()) THEN 1 ELSE 0 END) ExpiringSoon,
-SUM(CASE WHEN IsBlocked=1 OR ValidUntilUtc<SYSUTCDATETIME() THEN 1 ELSE 0 END) BlockedExpired
+SUM(CASE WHEN IsBlocked=0 AND ValidUntilUtc>=CAST(SYSUTCDATETIME() AS date) THEN 1 ELSE 0 END) ActiveLicenses,
+SUM(CASE WHEN IsBlocked=0 AND ValidUntilUtc>=CAST(SYSUTCDATETIME() AS date) AND ValidUntilUtc<DATEADD(day,11,SYSUTCDATETIME()) THEN 1 ELSE 0 END) ExpiringSoon,
+SUM(CASE WHEN IsBlocked=1 OR ValidUntilUtc<DATEADD(day,-3,CAST(SYSUTCDATETIME() AS date)) THEN 1 ELSE 0 END) BlockedExpired
 FROM dbo.Outlets;
 SELECT COUNT(*) FROM dbo.Devices WHERE IsBlocked=0;";
         await using var cmd=new SqlCommand(sql,c); await using var r=await cmd.ExecuteReaderAsync();
@@ -434,7 +490,14 @@ StoreType=@type,LicenseVersion=@ver,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId
     private static void P(SqlCommand c,string n,object? v)=>c.Parameters.AddWithValue(n,v??DBNull.Value);
     private static string? N(SqlDataReader r,int i)=>r.IsDBNull(i)?null:r.GetString(i);
     private static int I(SqlDataReader r,int i)=>r.IsDBNull(i)?0:Convert.ToInt32(r.GetValue(i));
-    private static string Status(bool blocked,DateTime until)=>blocked?"Blocked":until<DateTime.UtcNow?"Expired":until<DateTime.UtcNow.AddDays(10)?"Expiring":"Active";
+    private static string Status(bool blocked,DateTime until)
+    {
+        if(blocked) return "Blocked";
+        var days = DateOnly.FromDateTime(until).DayNumber - DateOnly.FromDateTime(DateTime.UtcNow).DayNumber;
+        if(days < -3) return "Expired";
+        if(days < 0) return "Grace";
+        return days <= 10 ? "Expiring" : "Active";
+    }
     private static string MaskFingerprint(string x)=>x.Length<=12?x:$"{x[..8]}…{x[^4..]}";
     private static bool FixedEquals(string a,string b)=>CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(a),Encoding.UTF8.GetBytes(b));
 }
@@ -493,6 +556,8 @@ sealed class LicenseSigner
             validUntilUtc=untilUtc.ToString("O"),
             status="Active",
             plan="Premium",
+            graceDays=Math.Clamp(_cfg.GetValue<int?>("Renewal:GraceDays")??3,0,7),
+            renewalUrl=(_cfg["Renewal:PublicBaseUrl"]??"http://suvidhapremium.suvidhapos.in").TrimEnd('/')+"/renew/"+Uri.EscapeDataString(o.OutletCode),
             tokenVersion=o.LicenseVersion,
             nonce=Convert.ToHexString(RandomNumberGenerator.GetBytes(12))
         };
