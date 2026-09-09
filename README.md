@@ -132,7 +132,7 @@ There should be no direct internet SQL connection from POS terminals.
 ## Source layout
 
 ```text
-src/SuvidhaPOS.Central/   ASP.NET Core source + premium UI
+ASP.NET Core source       SuvidhaPremium web/API + premium UI
 Database/                 Create / backup / restore SQL scripts
 Deploy/                   IIS and production-config scripts
 .github/workflows/        GitHub build → IIS ZIP
