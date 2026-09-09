@@ -10,7 +10,7 @@ BEGIN
     WITH PASSWORD = N'CHANGE_SQL_PASSWORD_HERE', CHECK_POLICY = ON, CHECK_EXPIRATION = OFF;
 END
 GO
-USE [SuvidhaPOSCentral];
+USE [SuvidhaPremium];
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'suvidhapos_app')
     CREATE USER [suvidhapos_app] FOR LOGIN [suvidhapos_app];

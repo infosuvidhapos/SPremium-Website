@@ -27,7 +27,7 @@ Production-oriented central admin website/API for SuvidhaPOS licensing and outle
 3. Download artifact: `SuvidhaPOS-Central-NET10-IIS`.
 4. Extract `SuvidhaPOS-Central-NET10-IIS.zip`.
 5. The final artifact is `SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP`.
-6. Inside it, `IIS-Publish` is the IIS website folder and `DatabaseBackup/SuvidhaPOSCentral.bak` is a real verified SQL Server backup.
+6. Inside it, `IIS-Publish` is the IIS website folder and `DatabaseBackup/SuvidhaPremium.bak` is a real verified SQL Server backup.
 
 The GitHub workflow builds `net10.0` on Windows, starts a temporary SQL Server 2019 container on a Linux runner, creates the schema, runs `BACKUP DATABASE`, validates it with `RESTORE VERIFYONLY WITH CHECKSUM`, then packages IIS + the `.bak` together.
 
@@ -51,7 +51,7 @@ From an elevated PowerShell prompt on the server:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPOSCentral" -SqlServer ".\SQLEXPRESS"
+.\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPremium" -SqlServer ".\SQLEXPRESS"
 ```
 
 The script writes `appsettings.Production.json` and prints a random **FIRST ADMIN SETUP KEY**. Save that key. Do not commit `appsettings.Production.json` back to GitHub.
@@ -60,7 +60,7 @@ If you use SQL authentication:
 
 ```powershell
 .\Deploy\Configure-Production.ps1 `
-  -PublishPath "C:\Sites\SuvidhaPOSCentral" `
+  -PublishPath "C:\Sites\SuvidhaPremium" `
   -SqlServer ".\SQLEXPRESS" `
   -SqlUser "suvidhapos_app" `
   -SqlPassword "YOUR-STRONG-PASSWORD"
@@ -73,7 +73,7 @@ After HTTPS certificate binding is ready, add `-RequireHttps`.
 Install the current **.NET 10 Hosting Bundle** on the IIS server first. Then:
 
 ```powershell
-.\Deploy\Install-IIS.ps1 -PhysicalPath "C:\Sites\SuvidhaPOSCentral" -Port 8080
+.\Deploy\Install-IIS.ps1 -PhysicalPath "C:\Sites\SuvidhaPremium" -Port 8080
 ```
 
 The App Pool is configured as **No Managed Code**. `App_Data` and `logs` get Modify permission for the App Pool identity.
@@ -96,8 +96,8 @@ After the first admin is created, first-admin setup closes automatically.
 The final GitHub artifact already contains:
 
 ```text
-DatabaseBackup/SuvidhaPOSCentral.bak
-DatabaseBackup/SuvidhaPOSCentral.bak.sha256
+DatabaseBackup/SuvidhaPremium.bak
+DatabaseBackup/SuvidhaPremium.bak.sha256
 DatabaseBackup/BACKUP-INFO.txt
 ```
 
@@ -105,7 +105,7 @@ This is a real SQL Server backup created during the Action run, not a placeholde
 
 To deploy on Windows SQL Server / SQL Express 2019 or newer:
 
-1. Copy `DatabaseBackup\SuvidhaPOSCentral.bak` to `C:\SuvidhaPOSBackup\SuvidhaPOSCentral.bak`.
+1. Copy `DatabaseBackup\SuvidhaPremium.bak` to `C:\SuvidhaPOSBackup\SuvidhaPremium.bak`.
 2. Run `Database/03_RestoreDatabase.sql` in SSMS.
 3. If IIS and SQL Server are on the same machine with Trusted Connection, run `Database/05_GrantIISAppPool.sql`.
 

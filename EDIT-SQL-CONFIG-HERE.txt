@@ -25,7 +25,7 @@ Current file:
 
 {
   "ConnectionStrings": {
-    "CentralDb": "Server=192.168.1.50,1433;Database=SuvidhaPOSCentral;User Id=suvidhapos_app;Password=CHANGE_SQL_PASSWORD_HERE;Encrypt=True;TrustServerCertificate=True;"
+    "CentralDb": "Server=192.168.1.50,1433;Database=SuvidhaPremium;User Id=suvidhapos_app;Password=CHANGE_SQL_PASSWORD_HERE;Encrypt=True;TrustServerCertificate=True;"
   },
   "Security": {
     "SetupKey": "CHANGE_SETUP_KEY_HERE",
@@ -34,7 +34,7 @@ Current file:
 }
 
 IMPORTANT:
-- SQL Server par SuvidhaPOSCentral.bak restore karein.
+- SQL Server par SuvidhaPremium.bak restore karein.
 - Agar suvidhapos_app SQL login nahi hai to Database\04_CreateAppLogin.sql edit/run karein.
 - 04_CreateAppLogin.sql me bhi SAME password dalna hai.
 - Production internet hosting ke liye HTTPS setup ke baad RequireHttps ko true karein.

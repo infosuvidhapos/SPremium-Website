@@ -16,10 +16,10 @@ AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
    IIS-Publish\
       -> actual IIS website files / DLL / web.config
 
-   DatabaseBackup\SuvidhaPOSCentral.bak
+   DatabaseBackup\SuvidhaPremium.bak
       -> REAL SQL Server backup, build ke time generate aur VERIFY kiya hua
 
-   DatabaseBackup\SuvidhaPOSCentral.bak.sha256
+   DatabaseBackup\SuvidhaPremium.bak.sha256
       -> backup checksum file
 
    DatabaseBackup\BACKUP-INFO.txt
@@ -31,8 +31,8 @@ AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
 5) SQL Server / SQL Express 2019 ya newer server par:
 
    C:\SuvidhaPOSBackup folder banayein.
-   DatabaseBackup\SuvidhaPOSCentral.bak ko copy karke:
-   C:\SuvidhaPOSBackup\SuvidhaPOSCentral.bak
+   DatabaseBackup\SuvidhaPremium.bak ko copy karke:
+   C:\SuvidhaPOSBackup\SuvidhaPremium.bak
    rakhein.
 
    SSMS me Database\03_RestoreDatabase.sql run karein.
@@ -45,18 +45,18 @@ AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
    Database\05_GrantIISAppPool.sql run karein.
 
 7) IIS-Publish folder ko server par copy karein. Example:
-   C:\Sites\SuvidhaPOSCentral
+   C:\Sites\SuvidhaPremium
 
 8) Server PowerShell (Administrator):
    Set-ExecutionPolicy -Scope Process Bypass
-   .\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPOSCentral" -SqlServer ".\SQLEXPRESS"
+   .\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPremium" -SqlServer ".\SQLEXPRESS"
 
    Screen par FIRST ADMIN SETUP KEY aayegi. Isko save karein.
 
 9) IIS server par .NET 10 Hosting Bundle install karein.
 
 10) IIS create karne ke liye:
-    .\Deploy\Install-IIS.ps1 -PhysicalPath "C:\Sites\SuvidhaPOSCentral" -Port 8080
+    .\Deploy\Install-IIS.ps1 -PhysicalPath "C:\Sites\SuvidhaPremium" -Port 8080
 
 11) Browser me site open karein. First launch par:
     Full Name + Email + Password + Setup Key se SuperAdmin create karein.

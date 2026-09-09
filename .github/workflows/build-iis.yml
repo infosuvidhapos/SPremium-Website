@@ -119,9 +119,9 @@ jobs:
             -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b \
             -i /tmp/06_CreateBuildBackup.sql
 
-          BAK="$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPOSCentral.bak"
+          BAK="$GITHUB_WORKSPACE/artifacts/database-backup/SuvidhaPremium.bak"
 
-          docker exec suvidhapos-sql chmod 0644 /var/opt/mssql/backup/SuvidhaPOSCentral.bak
+          docker exec suvidhapos-sql chmod 0644 /var/opt/mssql/backup/SuvidhaPremium.bak
           sudo chown "$(id -u):$(id -g)" "$BAK"
           chmod 0644 "$BAK"
 
@@ -129,10 +129,10 @@ jobs:
           sha256sum "$BAK" > "$BAK.sha256"
 
           {
-            echo "SuvidhaPOSCentral build backup"
+            echo "SuvidhaPremium build backup"
             echo "Generated UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
             echo "Source engine: SQL Server 2019 Developer container"
-            echo "Database: SuvidhaPOSCentral"
+            echo "Database: SuvidhaPremium"
             echo "Validation: RESTORE VERIFYONLY WITH CHECKSUM passed"
             echo "Restore target: SQL Server / SQL Express 2019 or newer"
             echo "Contents: clean schema baseline; no default admin password or production secrets"
@@ -154,7 +154,7 @@ jobs:
           cp ./START-HERE-HINDI.txt "$PKG/START-HERE-HINDI.txt"
 
           test -s "$PKG/IIS-Publish/SuvidhaPOS.Central.exe"
-          test -s "$PKG/DatabaseBackup/SuvidhaPOSCentral.bak"
+          test -s "$PKG/DatabaseBackup/SuvidhaPremium.bak"
 
           (
             cd "$PKG"

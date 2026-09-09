@@ -1,12 +1,12 @@
 /* SuvidhaPOS Central - SQL Server 2017+ / SQL Express */
 USE master;
 GO
-IF DB_ID(N'SuvidhaPOSCentral') IS NULL
+IF DB_ID(N'SuvidhaPremium') IS NULL
 BEGIN
-    CREATE DATABASE SuvidhaPOSCentral;
+    CREATE DATABASE SuvidhaPremium;
 END
 GO
-USE SuvidhaPOSCentral;
+USE SuvidhaPremium;
 GO
 
 IF OBJECT_ID('dbo.AdminUsers','U') IS NULL
@@ -106,4 +106,4 @@ CREATE TABLE dbo.AuditLogs(
 GO
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE name='IX_AuditLogs_Created' AND object_id=OBJECT_ID('dbo.AuditLogs')) CREATE INDEX IX_AuditLogs_Created ON dbo.AuditLogs(CreatedAtUtc DESC);
 GO
-PRINT 'SuvidhaPOSCentral database schema is ready.';
+PRINT 'SuvidhaPremium database schema is ready.';

@@ -8,7 +8,7 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'IIS APPPOOL\SuvidhaPOSCentral')
     CREATE LOGIN [IIS APPPOOL\SuvidhaPOSCentral] FROM WINDOWS;
 GO
-USE [SuvidhaPOSCentral];
+USE [SuvidhaPremium];
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'IIS APPPOOL\SuvidhaPOSCentral')
     CREATE USER [IIS APPPOOL\SuvidhaPOSCentral] FOR LOGIN [IIS APPPOOL\SuvidhaPOSCentral];

@@ -5,8 +5,8 @@
 */
 USE master;
 GO
-DECLARE @BackupFile nvarchar(4000) = N'C:\SuvidhaPOSBackup\SuvidhaPOSCentral.bak';
-BACKUP DATABASE [SuvidhaPOSCentral]
+DECLARE @BackupFile nvarchar(4000) = N'C:\SuvidhaPOSBackup\SuvidhaPremium.bak';
+BACKUP DATABASE [SuvidhaPremium]
 TO DISK = @BackupFile
 WITH INIT, CHECKSUM, STATS = 10;
 RESTORE VERIFYONLY FROM DISK = @BackupFile WITH CHECKSUM;

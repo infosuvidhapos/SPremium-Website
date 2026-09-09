@@ -13,5 +13,5 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Backup ready: C:\SuvidhaPOSBackup\SuvidhaPOSCentral.bak
+echo Backup ready: C:\SuvidhaPOSBackup\SuvidhaPremium.bak
 pause
