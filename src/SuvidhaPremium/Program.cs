@@ -320,6 +320,29 @@ app.MapPost("/api/pos/check", async (PosCheckRequest r, Db db, LicenseSigner sig
     return Results.Ok(new LicenseResponse(checkDaysLapsed > 0 ? "grace" : "active", token, outlet.ValidUntilUtc, outlet.StoreType, outlet.OutletCode, DateTime.UtcNow, signer.KeyId));
 });
 
+app.MapGet("/api/pos/profile", async (string? outletCode, string? deviceFingerprint, Db db) =>
+{
+    if (string.IsNullOrWhiteSpace(outletCode) || string.IsNullOrWhiteSpace(deviceFingerprint))
+        return Results.BadRequest(new { message = "Outlet code and device fingerprint are required." });
+
+    var profile = await db.GetPosProfileAsync(outletCode.Trim().ToUpperInvariant(), deviceFingerprint.Trim());
+    if (profile is null || profile.OutletBlocked || profile.DeviceBlocked)
+        return Results.Json(new { message = "Device is not authorized." }, statusCode: 403);
+
+    return Results.Ok(new
+    {
+        outletCode = profile.OutletCode,
+        outletName = profile.OutletName,
+        address = profile.Address,
+        mobile = profile.Mobile,
+        gstNo = profile.GstNo,
+        storeType = profile.StoreType,
+        validFromUtc = profile.ValidFromUtc,
+        validUntilUtc = profile.ValidUntilUtc,
+        updatedAtUtc = profile.UpdatedAtUtc
+    });
+});
+
 app.MapPost("/api/pos/profile", async (PosProfileRequest r, Db db, HttpContext ctx) =>
 {
     if (string.IsNullOrWhiteSpace(r.OutletCode) || string.IsNullOrWhiteSpace(r.DeviceFingerprint) || string.IsNullOrWhiteSpace(r.OutletName))
@@ -363,6 +386,7 @@ record BlockRequest(bool Blocked);
 record PosActivateRequest(string OutletCode, string ActivationCode, string DeviceFingerprint, string? DeviceName);
 record PosCheckRequest(string OutletCode, string DeviceFingerprint);
 record PosProfileRequest(string OutletCode, string DeviceFingerprint, string OutletName, string? Address, string? Mobile, string? GstNo);
+record PosProfileData(string OutletCode,string OutletName,string? Address,string? Mobile,string? GstNo,string StoreType,DateTime ValidFromUtc,DateTime ValidUntilUtc,DateTime UpdatedAtUtc,bool OutletBlocked,bool DeviceBlocked);
 record LicenseResponse(string Status, string Token, DateTime ValidUntilUtc, string StoreType, string OutletCode, DateTime ServerTimeUtc, string KeyId);
 
 sealed class Db
