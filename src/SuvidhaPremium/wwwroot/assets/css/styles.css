@@ -289,3 +289,63 @@ tr:hover td { background:rgba(255,255,255,.012); }
 html,body,button,input,select,textarea{font-family:Inter,Segoe UI,Arial,sans-serif}
 #codeModal .signature{font-size:1.05rem;letter-spacing:.08em}
 .login-foot{min-height:20px}
+
+
+/* v33 premium calendar, touch and mobile hardening */
+html,body{max-width:100%;overflow-x:hidden}
+.logout-btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 10px;border:1px solid var(--border);border-radius:10px;background:#0d1520;color:#9eabbd;cursor:pointer;white-space:nowrap}
+.logout-btn strong{font-size:9px;font-weight:800}
+.logout-btn:hover,.top-logout-btn:hover{border-color:rgba(239,107,115,.35);color:#ffd1d4;background:rgba(239,107,115,.07)}
+.top-logout-btn{min-height:40px;padding:0 14px;border:1px solid var(--border);border-radius:11px;background:#0c121c;color:#96a4b7;font-size:10px;font-weight:800;cursor:pointer}
+.manual-date-card{margin-top:18px;padding:16px;border:1px solid rgba(110,231,199,.15);border-radius:16px;background:linear-gradient(180deg,rgba(110,231,199,.045),rgba(11,17,26,.88))}
+.manual-date-card>label{font-size:10px;color:#a6b7c8;margin-bottom:10px}
+.date-touch-field{position:relative;display:flex;align-items:center;min-height:58px;border:1px solid rgba(110,231,199,.28);border-radius:14px;background:linear-gradient(180deg,#111c28,#0d1621);box-shadow:inset 0 1px 0 rgba(255,255,255,.025);cursor:pointer;touch-action:manipulation;transition:.18s ease}
+.date-touch-field:hover,.date-touch-field:focus-within{border-color:rgba(110,231,199,.62);box-shadow:0 0 0 3px rgba(110,231,199,.07)}
+.date-touch-icon{position:absolute;left:15px;z-index:2;font-size:18px;pointer-events:none}
+.premium-date-input{width:100%!important;min-height:56px!important;padding:0 168px 0 48px!important;border:0!important;background:transparent!important;font-size:14px!important;font-weight:750;color:#d9e6ed!important;cursor:pointer}
+.premium-date-input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.date-touch-hint{position:absolute;right:14px;color:#6f8296;font-size:9px;font-weight:700;pointer-events:none}
+.manual-date-note{display:block;margin-top:9px;color:#74879b;font-size:9px;line-height:1.55}
+.period-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.period-picker .period-btn{min-height:44px;min-width:88px;padding:10px 13px;font-size:10px}
+.remember-control{min-height:40px;cursor:pointer}
+.remember-control input{width:18px;height:18px;accent-color:#6ee7c7;cursor:pointer}
+.remember-control span{font-size:9px}
+button,input,select,textarea{touch-action:manipulation}
+
+@media (max-width:820px){
+  .sidebar{width:min(86vw,320px)}
+  .sidebar-footer{gap:8px}
+  .logout-btn{min-height:44px}
+  .topbar{align-items:flex-start;gap:10px;flex-wrap:wrap}
+  .topbar-actions{gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .top-logout-btn{display:inline-flex;min-height:44px}
+  .content-view{padding:16px 12px 30px}
+  .panel{border-radius:15px}
+  .renew-layout{gap:12px}
+  .renew-form,.preview-panel{padding:16px!important}
+  .period-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  .period-picker .period-btn{width:100%;min-height:48px;font-size:11px}
+  .date-touch-field{min-height:62px}
+  .premium-date-input{min-height:60px!important;font-size:16px!important;padding-right:48px!important}
+  .date-touch-hint{display:none}
+  .manual-date-card{padding:14px}
+  .primary-btn.large-btn{min-height:52px;font-size:12px}
+  .modal-backdrop{padding:8px}
+  .modal{border-radius:16px;max-height:96vh}
+  .toast{left:12px;right:12px;bottom:12px;min-width:0;max-width:none}
+}
+@media (max-width:620px){
+  .topbar .topbar-actions{width:100%;justify-content:space-between}
+  .topbar .primary-btn,.top-logout-btn{flex:1}
+  .section-toolbar h2{font-size:22px}
+  .period-picker{grid-template-columns:1fr 1fr}
+  .token-row{gap:12px}
+  .token-row strong{text-align:right}
+  .login-card-wrap{padding:12px}
+  .login-card{padding:22px 16px;border-radius:18px}
+  .remember-row{font-size:9px;gap:10px}
+}
+@media (pointer:coarse){
+  .nav-item,.row-btn,.secondary-btn,.primary-btn,.period-btn,.logout-btn,.top-logout-btn{min-height:44px}
+}

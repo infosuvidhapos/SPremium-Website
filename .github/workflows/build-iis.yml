@@ -59,6 +59,19 @@ jobs:
           fi
           grep -q 'Manual Valid Until Date (Calendar)' ./src/SuvidhaPremium/wwwroot/index.html
           grep -q 'setManualDateBounds' ./src/SuvidhaPremium/wwwroot/assets/js/app.js
+          grep -q "input.min='2000-01-01'" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
+          grep -q "input.max='2100-12-31'" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
+          grep -q 'showPicker' ./src/SuvidhaPremium/wwwroot/assets/js/app.js
+          grep -q 'manualDateTouchField' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'topLogoutBtn' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'Logout' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'Remember me for 30 days' ./src/SuvidhaPremium/wwwroot/login.html
+          grep -q 'redirectIfRememberedSession' ./src/SuvidhaPremium/wwwroot/assets/js/login.js
+          grep -q 'AddDays(30)' ./src/SuvidhaPremium/Program.cs
+          if grep -q 'Manual validity date cannot be in the past' ./src/SuvidhaPremium/Program.cs; then
+            echo "Past manual validity dates are still blocked" >&2
+            exit 1
+          fi
           grep -q 'data-days="manual"' ./src/SuvidhaPremium/wwwroot/index.html
           grep -q "renewMode==='manual'" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
           python3 - <<'PY'
@@ -71,7 +84,7 @@ jobs:
           if bad in s.replace(good, ''):
               raise SystemExit('Broken single-element period selector found')
           PY
-          grep -q 'assets/js/app.js?v=32' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'assets/js/app.js?v=33' ./src/SuvidhaPremium/wwwroot/index.html
 
       - name: Generate temporary SQL password
         shell: bash

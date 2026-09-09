@@ -54,7 +54,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.Cookie.SecurePolicy = requireHttps ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
         o.Cookie.SameSite = SameSiteMode.Strict;
         o.SlidingExpiration = true;
-        o.ExpireTimeSpan = TimeSpan.FromHours(8);
+        o.ExpireTimeSpan = TimeSpan.FromDays(30);
         o.Events.OnRedirectToLogin = ctx =>
         {
             if (ctx.Request.Path.StartsWithSegments("/api"))
@@ -139,7 +139,12 @@ app.MapPost("/api/auth/login", async (LoginRequest r, Db db, HttpContext ctx) =>
     };
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
         new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
-        new AuthenticationProperties { IsPersistent = r.RememberMe, ExpiresUtc = DateTimeOffset.UtcNow.AddHours(r.RememberMe ? 72 : 8) });
+        new AuthenticationProperties
+        {
+            IsPersistent = r.RememberMe,
+            AllowRefresh = true,
+            ExpiresUtc = r.RememberMe ? DateTimeOffset.UtcNow.AddDays(30) : DateTimeOffset.UtcNow.AddHours(8)
+        });
     await db.SetAdminLastLoginAsync(admin.AdminId);
     await db.AuditAsync(admin.AdminId, "ADMIN_LOGIN", "Admin", admin.AdminId.ToString(), "Administrator signed in", ctx);
     return Results.Ok(new { admin.FullName, admin.Email, admin.Role });
@@ -215,20 +220,12 @@ app.MapPost("/api/admin/outlets/{id:guid}/renew", async (Guid id, RenewRequest r
     if (r.ValidUntilDate.HasValue)
     {
         var selectedDate = r.ValidUntilDate.Value.Date;
-        if (selectedDate < DateTime.UtcNow.Date)
-            return Results.BadRequest(new { message = "Manual validity date cannot be in the past." });
+        if (selectedDate.Year < 2000 || selectedDate.Year > 2100)
+            return Results.BadRequest(new { message = "Manual validity date must be between year 2000 and 2100." });
 
         var targetUtc = DateTime.SpecifyKind(selectedDate.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-        try
-        {
-            result = await db.RenewToDateAsync(id, targetUtc, CurrentAdmin(ctx));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Results.BadRequest(new { message = ex.Message });
-        }
-
-        auditText = $"Validity manually set/extended to {targetUtc:O}";
+        result = await db.RenewToDateAsync(id, targetUtc, CurrentAdmin(ctx));
+        auditText = $"Validity manually set to {targetUtc:O}";
     }
     else
     {
@@ -503,11 +500,9 @@ StoreType=@type,LicenseVersion=@ver,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId
         var oldCmd=new SqlCommand("SELECT ValidUntilUtc,StoreType,LicenseVersion FROM dbo.Outlets WITH (UPDLOCK,ROWLOCK) WHERE OutletId=@id",c,(SqlTransaction)tx);P(oldCmd,"@id",id);
         DateTime old; string type; int ver;
         await using(var rr=await oldCmd.ExecuteReaderAsync()){if(!await rr.ReadAsync()){await tx.RollbackAsync();return null;}old=rr.GetDateTime(0);type=rr.GetString(1);ver=rr.GetInt32(2);}
-        var minimum=old>DateTime.UtcNow?old:DateTime.UtcNow.Date.AddSeconds(-1);
-        if(targetUtc<=minimum) throw new InvalidOperationException($"Select a date after the current validity ({old:dd-MMM-yyyy}).");
         var newVer=ver+1;
         var up=new SqlCommand("UPDATE dbo.Outlets SET ValidUntilUtc=@nu,LicenseVersion=@v,LastRenewedAtUtc=SYSUTCDATETIME(),UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id",c,(SqlTransaction)tx);P(up,"@nu",targetUtc);P(up,"@v",newVer);P(up,"@id",id);await up.ExecuteNonQueryAsync();
-        var hist=new SqlCommand("INSERT dbo.LicenseHistory(OutletId,OldValidUntilUtc,NewValidUntilUtc,OldStoreType,NewStoreType,Action,AdminId,TokenVersion) VALUES(@id,@old,@nu,@t,@t,'RENEW_MANUAL_DATE',@a,@v)",c,(SqlTransaction)tx);P(hist,"@id",id);P(hist,"@old",old);P(hist,"@nu",targetUtc);P(hist,"@t",type);P(hist,"@a",admin);P(hist,"@v",newVer);await hist.ExecuteNonQueryAsync();
+        var hist=new SqlCommand("INSERT dbo.LicenseHistory(OutletId,OldValidUntilUtc,NewValidUntilUtc,OldStoreType,NewStoreType,Action,AdminId,TokenVersion) VALUES(@id,@old,@nu,@t,@t,'VALIDITY_SET_MANUAL_DATE',@a,@v)",c,(SqlTransaction)tx);P(hist,"@id",id);P(hist,"@old",old);P(hist,"@nu",targetUtc);P(hist,"@t",type);P(hist,"@a",admin);P(hist,"@v",newVer);await hist.ExecuteNonQueryAsync();
         await tx.CommitAsync(); return new(targetUtc,newVer);
     }
 
