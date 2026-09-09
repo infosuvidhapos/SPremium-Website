@@ -1,6 +1,6 @@
 {
   "ConnectionStrings": {
-    "CentralDb": "Server=.\\SQLEXPRESS;Database=SuvidhaPOSCentral;User Id=suvidhapos_app;Password=CHANGE_ME;Encrypt=True;TrustServerCertificate=True"
+    "CentralDb": "Server=.\\SQLEXPRESS;Database=SuvidhaPremium;User Id=suvidhapos_app;Password=CHANGE_ME;Encrypt=True;TrustServerCertificate=True"
   },
   "Security": {
     "SetupKey": "GENERATE_WITH_Deploy_Configure-Production.ps1",

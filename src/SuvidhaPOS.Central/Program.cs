@@ -478,7 +478,24 @@ sealed class LicenseSigner
     public string Issue(ActivationOutlet o,string fingerprint)
     {
         var now=DateTime.UtcNow; var header=new{alg="PS256",typ="SLT",kid=KeyId};
-        var payload=new{iss=_cfg["License:Issuer"]??"SuvidhaPOS-Central",licenseId=o.LicenseCode,outletId=o.OutletId,outletCode=o.OutletCode,storeType=o.StoreType,deviceHash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint))),issuedAtUtc=now,validFromUtc=o.ValidFromUtc,validUntilUtc=o.ValidUntilUtc,tokenVersion=o.LicenseVersion,nonce=Convert.ToHexString(RandomNumberGenerator.GetBytes(12))};
+        var fromUtc=DateTime.SpecifyKind(o.ValidFromUtc,DateTimeKind.Utc);
+        var untilUtc=DateTime.SpecifyKind(o.ValidUntilUtc,DateTimeKind.Utc);
+        var payload=new{
+            iss=_cfg["License:Issuer"]??"SuvidhaPOS-Central",
+            licenseId=o.LicenseCode,
+            outletId=o.OutletId,
+            outletCode=o.OutletCode,
+            outletName=o.OutletName,
+            storeType=o.StoreType,
+            deviceHash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint))),
+            issuedAtUtc=now.ToString("O"),
+            validFromUtc=fromUtc.ToString("O"),
+            validUntilUtc=untilUtc.ToString("O"),
+            status="Active",
+            plan="Premium",
+            tokenVersion=o.LicenseVersion,
+            nonce=Convert.ToHexString(RandomNumberGenerator.GetBytes(12))
+        };
         var h=B64(JsonSerializer.SerializeToUtf8Bytes(header));var p=B64(JsonSerializer.SerializeToUtf8Bytes(payload));var input=Encoding.ASCII.GetBytes(h+"."+p);using var rsa=RSA.Create();rsa.ImportFromPem(File.ReadAllText(_priv));var sig=rsa.SignData(input,HashAlgorithmName.SHA256,RSASignaturePadding.Pss);return h+"."+p+"."+B64(sig);
     }
     static string B64(byte[] b)=>Convert.ToBase64String(b).TrimEnd('=').Replace('+','-').Replace('/','_');

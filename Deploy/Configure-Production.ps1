@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)] [string]$PublishPath,
     [string]$SqlServer = ".\SQLEXPRESS",
-    [string]$Database = "SuvidhaPOSCentral",
+    [string]$Database = "SuvidhaPremium",
     [string]$SqlUser = "",
     [string]$SqlPassword = "",
     [switch]$RequireHttps
