@@ -27,14 +27,17 @@ jobs:
       - name: Build
         run: dotnet build .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj -c Release --no-restore
 
-      - name: Publish for IIS
-        run: dotnet publish .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj -c Release --no-build -o .\artifacts\iis-publish
+      - name: Publish self-contained Windows x64 for IIS
+        run: dotnet publish .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -o .\artifacts\iis-publish
 
       - name: Validate IIS publish
         shell: pwsh
         run: |
+          if (-not (Test-Path .\artifacts\iis-publish\SuvidhaPOS.Central.exe)) { throw "Self-contained EXE missing" }
           if (-not (Test-Path .\artifacts\iis-publish\SuvidhaPOS.Central.dll)) { throw "Published DLL missing" }
           if (-not (Test-Path .\artifacts\iis-publish\web.config)) { throw "web.config missing" }
+          $wc = Get-Content .\artifacts\iis-publish\web.config -Raw
+          if ($wc -notmatch 'SuvidhaPOS\.Central\.exe') { throw "web.config is not pointing to self-contained EXE" }
 
       - name: Upload IIS stage
         uses: actions/upload-artifact@v4
