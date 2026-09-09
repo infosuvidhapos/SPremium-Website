@@ -55,6 +55,12 @@ jobs:
           grep -q 'id="manualValidityDate"' ./src/SuvidhaPremium/wwwroot/index.html
           grep -q 'data-days="manual"' ./src/SuvidhaPremium/wwwroot/index.html
           grep -q "renewMode==='manual'" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
+          grep -Fq "$('.period-btn').forEach" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
+          if grep -Fq "$('.period-btn').forEach" ./src/SuvidhaPremium/wwwroot/assets/js/app.js; then
+            echo "Broken single-element period selector found" >&2
+            exit 1
+          fi
+          grep -q 'assets/js/app.js?v=26' ./src/SuvidhaPremium/wwwroot/index.html
 
       - name: Generate temporary SQL password
         shell: bash
