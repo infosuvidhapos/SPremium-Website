@@ -311,10 +311,12 @@ app.MapPost("/api/pos/check", async (PosCheckRequest r, Db db, LicenseSigner sig
     if (outlet.IsBlocked) return Results.Json(new { status = "blocked", message = "Outlet is blocked by central admin." }, statusCode: 403);
     await db.TouchDeviceAsync(outlet.DeviceId);
     var checkDaysLapsed = DateOnly.FromDateTime(DateTime.UtcNow).DayNumber - DateOnly.FromDateTime(outlet.ValidUntilUtc).DayNumber;
-    if (checkDaysLapsed > graceDays)
-        return Results.Ok(new { status = "expired", validUntilUtc = outlet.ValidUntilUtc, graceDays, serverTimeUtc = DateTime.UtcNow });
+    // Always return a newly signed token for an authorized device, including after grace expiry.
+    // The POS can then enforce the website-owned ValidUntil/StoreType from signed data instead of
+    // continuing with an older cached token.
     var token = signer.Issue(outlet, r.DeviceFingerprint.Trim());
-    return Results.Ok(new LicenseResponse(checkDaysLapsed > 0 ? "grace" : "active", token, outlet.ValidUntilUtc, outlet.StoreType, outlet.OutletCode, DateTime.UtcNow, signer.KeyId));
+    var status = checkDaysLapsed > graceDays ? "expired" : checkDaysLapsed > 0 ? "grace" : "active";
+    return Results.Ok(new LicenseResponse(status, token, outlet.ValidUntilUtc, outlet.StoreType, outlet.OutletCode, DateTime.UtcNow, signer.KeyId));
 });
 
 app.MapGet("/api/pos/profile", async (string? outletCode, string? deviceFingerprint, Db db) =>
