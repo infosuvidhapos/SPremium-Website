@@ -209,7 +209,7 @@ app.MapMethods("/api/admin/outlets/{id:guid}", new[] { "PUT", "POST" }, async (G
 
 app.MapPost("/api/admin/outlets/{id:guid}/renew", async (Guid id, RenewRequest r, Db db, HttpContext ctx) =>
 {
-    RenewalResult? result;
+    RenewResult? result;
     string auditText;
 
     if (r.ValidUntilDate.HasValue)
@@ -473,7 +473,7 @@ StoreType=@type,LicenseVersion=@ver,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId
         await tx.CommitAsync(); return new(nu,newVer);
     }
 
-    public async Task<RenewalResult?> RenewToDateAsync(Guid id,DateTime targetUtc,Guid? admin)
+    public async Task<RenewResult?> RenewToDateAsync(Guid id,DateTime targetUtc,Guid? admin)
     {
         await using var c=Conn(); await c.OpenAsync(); await using var tx=await c.BeginTransactionAsync();
         var oldCmd=new SqlCommand("SELECT ValidUntilUtc,StoreType,LicenseVersion FROM dbo.Outlets WITH (UPDLOCK,ROWLOCK) WHERE OutletId=@id",c,(SqlTransaction)tx);P(oldCmd,"@id",id);
