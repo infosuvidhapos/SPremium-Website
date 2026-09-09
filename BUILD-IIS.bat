@@ -7,8 +7,8 @@ where dotnet >nul 2>&1 || (
   exit /b 1
 )
 if exist iis-publish rmdir /s /q iis-publish
-dotnet restore .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj || exit /b 1
-dotnet publish .\src\SuvidhaPOS.Central\SuvidhaPOS.Central.csproj -c Release -o .\iis-publish || exit /b 1
+dotnet restore .\src\SuvidhaPremium\SuvidhaPremium.csproj || exit /b 1
+dotnet publish .\src\SuvidhaPremium\SuvidhaPremium.csproj -c Release -o .\iis-publish || exit /b 1
 echo.
 echo IIS publish folder ready: %CD%\iis-publish
 pause
