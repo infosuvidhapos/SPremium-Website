@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)] [string]$PhysicalPath,
-    [string]$SiteName = "SuvidhaPOSCentral",
-    [string]$AppPoolName = "SuvidhaPOSCentral",
+    [string]$SiteName = "SuvidhaPremium",
+    [string]$AppPoolName = "SuvidhaPremium",
     [int]$Port = 8080
 )
 $ErrorActionPreference = "Stop"

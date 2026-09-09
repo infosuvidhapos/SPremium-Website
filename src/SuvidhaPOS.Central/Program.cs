@@ -9,7 +9,7 @@ using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var cookieName = builder.Configuration["Security:CookieName"] ?? "SuvidhaPOS.Central.Auth";
+var cookieName = builder.Configuration["Security:CookieName"] ?? "SuvidhaPremium.Auth";
 var requireHttps = builder.Configuration.GetValue<bool>("Security:RequireHttps");
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
@@ -481,7 +481,7 @@ sealed class LicenseSigner
         var fromUtc=DateTime.SpecifyKind(o.ValidFromUtc,DateTimeKind.Utc);
         var untilUtc=DateTime.SpecifyKind(o.ValidUntilUtc,DateTimeKind.Utc);
         var payload=new{
-            iss=_cfg["License:Issuer"]??"SuvidhaPOS-Central",
+            iss=_cfg["License:Issuer"]??"SuvidhaPremium",
             licenseId=o.LicenseCode,
             outletId=o.OutletId,
             outletCode=o.OutletCode,

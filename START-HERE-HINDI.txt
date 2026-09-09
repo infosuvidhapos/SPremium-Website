@@ -1,4 +1,4 @@
-SuvidhaPOS Central - .NET 10 LTS - START HERE
+SuvidhaPremium - .NET 10 LTS - START HERE
 ================================================
 
 AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
@@ -9,7 +9,7 @@ AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
    Actions -> Build IIS + SQL Backup -> Run workflow
 
 3) Build complete hone ke baad artifact download karein:
-   SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP
+   SuvidhaPremium-NET10-IIS-WITH-SQL-BACKUP
 
 4) Artifact ZIP ke andar:
 

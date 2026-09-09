@@ -1,4 +1,4 @@
-SuvidhaPOS Central - MANUAL SQL CONFIG
+SuvidhaPremium - MANUAL SQL CONFIG
 =====================================
 
 Aapko primarily ye file edit karni hai:
@@ -48,4 +48,4 @@ ARCHITECTURE RULE - IMPORTANT
 - If SQL Server IP/port changes, update ONLY the IIS server file:
     appsettings.Production.json -> ConnectionStrings -> CentralDb
 - POS installations do NOT need any change/reinstall when SQL Server IP changes.
-- After changing CentralDb on IIS, recycle the SuvidhaPOSCentral App Pool.
+- After changing CentralDb on IIS, recycle the SuvidhaPremium App Pool.

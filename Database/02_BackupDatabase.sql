@@ -1,5 +1,5 @@
 /*
-  SuvidhaPOS Central full backup.
+  SuvidhaPremium full backup.
   Change @BackupFile if required.
   SQL Server service account must have write permission to the target folder.
 */

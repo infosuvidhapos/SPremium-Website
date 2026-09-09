@@ -1,4 +1,4 @@
-# SuvidhaPOS Central — .NET 10 LTS + SQL Server + IIS
+# SuvidhaPremium — .NET 10 LTS + SQL Server + IIS
 
 Production-oriented central admin website/API for SuvidhaPOS licensing and outlet management.
 
@@ -24,9 +24,9 @@ Production-oriented central admin website/API for SuvidhaPOS licensing and outle
 
 1. Create a GitHub repository and upload this whole folder.
 2. Open **Actions → Build IIS Package → Run workflow**.
-3. Download artifact: `SuvidhaPOS-Central-NET10-IIS`.
-4. Extract `SuvidhaPOS-Central-NET10-IIS.zip`.
-5. The final artifact is `SuvidhaPOS-Central-NET10-IIS-WITH-SQL-BACKUP`.
+3. Download artifact: `SuvidhaPremium-NET10-IIS`.
+4. Extract `SuvidhaPremium-NET10-IIS.zip`.
+5. The final artifact is `SuvidhaPremium-NET10-IIS-WITH-SQL-BACKUP`.
 6. Inside it, `IIS-Publish` is the IIS website folder and `DatabaseBackup/SuvidhaPremium.bak` is a real verified SQL Server backup.
 
 The GitHub workflow builds `net10.0` on Windows, starts a temporary SQL Server 2019 container on a Linux runner, creates the schema, runs `BACKUP DATABASE`, validates it with `RESTORE VERIFYONLY WITH CHECKSUM`, then packages IIS + the `.bak` together.

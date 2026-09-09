@@ -1,4 +1,4 @@
-/* SuvidhaPOS Central - SQL Server 2017+ / SQL Express */
+/* SuvidhaPremium - SQL Server 2017+ / SQL Express */
 USE master;
 GO
 IF DB_ID(N'SuvidhaPremium') IS NULL

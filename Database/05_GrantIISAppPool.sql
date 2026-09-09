@@ -5,15 +5,15 @@
 */
 USE master;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'IIS APPPOOL\SuvidhaPOSCentral')
-    CREATE LOGIN [IIS APPPOOL\SuvidhaPOSCentral] FROM WINDOWS;
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'IIS APPPOOL\SuvidhaPremium')
+    CREATE LOGIN [IIS APPPOOL\SuvidhaPremium] FROM WINDOWS;
 GO
 USE [SuvidhaPremium];
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'IIS APPPOOL\SuvidhaPOSCentral')
-    CREATE USER [IIS APPPOOL\SuvidhaPOSCentral] FOR LOGIN [IIS APPPOOL\SuvidhaPOSCentral];
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'IIS APPPOOL\SuvidhaPremium')
+    CREATE USER [IIS APPPOOL\SuvidhaPremium] FOR LOGIN [IIS APPPOOL\SuvidhaPremium];
 GO
-GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [IIS APPPOOL\SuvidhaPOSCentral];
-GRANT UPDATE ON OBJECT::dbo.OutletNumberSequence TO [IIS APPPOOL\SuvidhaPOSCentral];
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [IIS APPPOOL\SuvidhaPremium];
+GRANT UPDATE ON OBJECT::dbo.OutletNumberSequence TO [IIS APPPOOL\SuvidhaPremium];
 GO
 PRINT N'IIS App Pool SQL permissions granted.';
