@@ -49,7 +49,7 @@ AB GITHUB BUILD ME REAL SQL .BAK BHI MILEGA.
 
 8) Server PowerShell (Administrator):
    Set-ExecutionPolicy -Scope Process Bypass
-   .\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPremium" -SqlServer ".\SQLEXPRESS"
+   .\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPremium" -SqlServer "38.247.131.87,8416"
 
    Screen par FIRST ADMIN SETUP KEY aayegi. Isko save karein.
 
