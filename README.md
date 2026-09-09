@@ -51,7 +51,7 @@ From an elevated PowerShell prompt on the server:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPremium" -SqlServer ".\SQLEXPRESS"
+.\Deploy\Configure-Production.ps1 -PublishPath "C:\Sites\SuvidhaPremium" -SqlServer "38.247.131.87,8416"
 ```
 
 The script writes `appsettings.Production.json` and prints a random **FIRST ADMIN SETUP KEY**. Save that key. Do not commit `appsettings.Production.json` back to GitHub.
@@ -61,7 +61,7 @@ If you use SQL authentication:
 ```powershell
 .\Deploy\Configure-Production.ps1 `
   -PublishPath "C:\Sites\SuvidhaPremium" `
-  -SqlServer ".\SQLEXPRESS" `
+  -SqlServer "38.247.131.87,8416" `
   -SqlUser "suvidhapos_app" `
   -SqlPassword "YOUR-STRONG-PASSWORD"
 ```
