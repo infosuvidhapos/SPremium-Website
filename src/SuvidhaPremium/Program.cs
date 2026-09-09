@@ -197,7 +197,7 @@ app.MapPost("/api/admin/outlets", async (CreateOutletRequest r, Db db, HttpConte
     return Results.Ok(new { outlet = result, activationCode, note = "Save this activation code now. Only its hash is stored on the server." });
 }).RequireAuthorization("ManageOutlet");
 
-app.MapPut("/api/admin/outlets/{id:guid}", async (Guid id, UpdateOutletRequest r, Db db, HttpContext ctx) =>
+app.MapMethods("/api/admin/outlets/{id:guid}", new[] { "PUT", "POST" }, async (Guid id, UpdateOutletRequest r, Db db, HttpContext ctx) =>
 {
     if (string.IsNullOrWhiteSpace(r.StoreType) || !storeTypes.Contains(r.StoreType.Trim(), StringComparer.OrdinalIgnoreCase))
         return Results.BadRequest(new { message = "Invalid Store Type. Select a Store Type from SuvidhaPremium master." });
@@ -209,10 +209,39 @@ app.MapPut("/api/admin/outlets/{id:guid}", async (Guid id, UpdateOutletRequest r
 
 app.MapPost("/api/admin/outlets/{id:guid}/renew", async (Guid id, RenewRequest r, Db db, HttpContext ctx) =>
 {
-    if (r.Days < 1 || r.Days > 3650) return Results.BadRequest(new { message = "Renewal must be between 1 and 3650 days." });
-    var result = await db.RenewAsync(id, r.Days, CurrentAdmin(ctx));
+    RenewalResult? result;
+    string auditText;
+
+    if (r.ValidUntilDate.HasValue)
+    {
+        var selectedDate = r.ValidUntilDate.Value.Date;
+        if (selectedDate < DateTime.UtcNow.Date)
+            return Results.BadRequest(new { message = "Manual validity date cannot be in the past." });
+
+        var targetUtc = DateTime.SpecifyKind(selectedDate.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+        try
+        {
+            result = await db.RenewToDateAsync(id, targetUtc, CurrentAdmin(ctx));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { message = ex.Message });
+        }
+
+        auditText = $"Validity manually set/extended to {targetUtc:O}";
+    }
+    else
+    {
+        var days = r.Days ?? 0;
+        if (days < 1 || days > 3650)
+            return Results.BadRequest(new { message = "Renewal must be between 1 and 3650 days, or select a manual calendar date." });
+
+        result = await db.RenewAsync(id, days, CurrentAdmin(ctx));
+        auditText = $"Validity extended by {days} days";
+    }
+
     if (result is null) return Results.NotFound(new { message = "Outlet not found." });
-    await db.AuditAsync(CurrentAdmin(ctx), "LICENSE_RENEWED", "Outlet", id.ToString(), $"Validity extended by {r.Days} days to {result.ValidUntilUtc:O}", ctx);
+    await db.AuditAsync(CurrentAdmin(ctx), "LICENSE_RENEWED", "Outlet", id.ToString(), $"{auditText} to {result.ValidUntilUtc:O}", ctx);
     return Results.Ok(result);
 }).RequireAuthorization("ManageLicense");
 
@@ -329,7 +358,7 @@ record LoginRequest(string Email, string Password, bool RememberMe = false);
 record CreateAdminRequest(string FullName, string Email, string Password, string Role);
 record CreateOutletRequest(string OutletName, string? Address, string? Mobile, string? GstNo, string StoreType, int ValidityDays);
 record UpdateOutletRequest(string OutletName, string? Address, string? Mobile, string? GstNo, string StoreType);
-record RenewRequest(int Days);
+record RenewRequest(int? Days, DateTime? ValidUntilDate);
 record BlockRequest(bool Blocked);
 record PosActivateRequest(string OutletCode, string ActivationCode, string DeviceFingerprint, string? DeviceName);
 record PosCheckRequest(string OutletCode, string DeviceFingerprint);
@@ -442,6 +471,20 @@ StoreType=@type,LicenseVersion=@ver,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId
         var up=new SqlCommand("UPDATE dbo.Outlets SET ValidUntilUtc=@nu,LicenseVersion=@v,LastRenewedAtUtc=SYSUTCDATETIME(),UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id",c,(SqlTransaction)tx);P(up,"@nu",nu);P(up,"@v",newVer);P(up,"@id",id);await up.ExecuteNonQueryAsync();
         var hist=new SqlCommand("INSERT dbo.LicenseHistory(OutletId,OldValidUntilUtc,NewValidUntilUtc,OldStoreType,NewStoreType,Action,AdminId,TokenVersion) VALUES(@id,@old,@nu,@t,@t,'RENEW',@a,@v)",c,(SqlTransaction)tx);P(hist,"@id",id);P(hist,"@old",old);P(hist,"@nu",nu);P(hist,"@t",type);P(hist,"@a",admin);P(hist,"@v",newVer);await hist.ExecuteNonQueryAsync();
         await tx.CommitAsync(); return new(nu,newVer);
+    }
+
+    public async Task<RenewalResult?> RenewToDateAsync(Guid id,DateTime targetUtc,Guid? admin)
+    {
+        await using var c=Conn(); await c.OpenAsync(); await using var tx=await c.BeginTransactionAsync();
+        var oldCmd=new SqlCommand("SELECT ValidUntilUtc,StoreType,LicenseVersion FROM dbo.Outlets WITH (UPDLOCK,ROWLOCK) WHERE OutletId=@id",c,(SqlTransaction)tx);P(oldCmd,"@id",id);
+        DateTime old; string type; int ver;
+        await using(var rr=await oldCmd.ExecuteReaderAsync()){if(!await rr.ReadAsync()){await tx.RollbackAsync();return null;}old=rr.GetDateTime(0);type=rr.GetString(1);ver=rr.GetInt32(2);}
+        var minimum=old>DateTime.UtcNow?old:DateTime.UtcNow.Date.AddSeconds(-1);
+        if(targetUtc<=minimum) throw new InvalidOperationException($"Select a date after the current validity ({old:dd-MMM-yyyy}).");
+        var newVer=ver+1;
+        var up=new SqlCommand("UPDATE dbo.Outlets SET ValidUntilUtc=@nu,LicenseVersion=@v,LastRenewedAtUtc=SYSUTCDATETIME(),UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id",c,(SqlTransaction)tx);P(up,"@nu",targetUtc);P(up,"@v",newVer);P(up,"@id",id);await up.ExecuteNonQueryAsync();
+        var hist=new SqlCommand("INSERT dbo.LicenseHistory(OutletId,OldValidUntilUtc,NewValidUntilUtc,OldStoreType,NewStoreType,Action,AdminId,TokenVersion) VALUES(@id,@old,@nu,@t,@t,'RENEW_MANUAL_DATE',@a,@v)",c,(SqlTransaction)tx);P(hist,"@id",id);P(hist,"@old",old);P(hist,"@nu",targetUtc);P(hist,"@t",type);P(hist,"@a",admin);P(hist,"@v",newVer);await hist.ExecuteNonQueryAsync();
+        await tx.CommitAsync(); return new(targetUtc,newVer);
     }
 
     public Task<bool> SetOutletBlockedAsync(Guid id,bool blocked)=>ExecBoolAsync("UPDATE dbo.Outlets SET IsBlocked=@b,LicenseVersion=LicenseVersion+1,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id",("@b",blocked),("@id",id));

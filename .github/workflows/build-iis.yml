@@ -43,6 +43,19 @@ jobs:
           test -s ./artifacts/iis-publish/web.config
           grep -q "SuvidhaPremium.exe" ./artifacts/iis-publish/web.config
 
+      - name: Validate outlet update verbs and manual validity calendar
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'remove name="WebDAVModule"' ./src/SuvidhaPremium/web.config
+          grep -q 'remove name="WebDAV"' ./src/SuvidhaPremium/web.config
+          grep -q 'new\[\] { "PUT", "POST" }' ./src/SuvidhaPremium/Program.cs
+          grep -q 'RenewToDateAsync' ./src/SuvidhaPremium/Program.cs
+          grep -q 'ValidUntilDate' ./src/SuvidhaPremium/Program.cs
+          grep -q 'id="manualValidityDate"' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'data-days="manual"' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q "renewMode==='manual'" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
+
       - name: Generate temporary SQL password
         shell: bash
         run: |
