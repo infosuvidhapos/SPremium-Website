@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)] [string]$PublishPath,
-    [string]$SqlServer = ".\SQLEXPRESS",
+    [string]$SqlServer = "38.247.131.87,8416",
     [string]$Database = "SuvidhaPremium",
     [string]$SqlUser = "",
     [string]$SqlPassword = "",
