@@ -55,12 +55,17 @@ jobs:
           grep -q 'id="manualValidityDate"' ./src/SuvidhaPremium/wwwroot/index.html
           grep -q 'data-days="manual"' ./src/SuvidhaPremium/wwwroot/index.html
           grep -q "renewMode==='manual'" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
-          grep -Fq "$('.period-btn').forEach" ./src/SuvidhaPremium/wwwroot/assets/js/app.js
-          if grep -Fq "$('.period-btn').forEach" ./src/SuvidhaPremium/wwwroot/assets/js/app.js; then
-            echo "Broken single-element period selector found" >&2
-            exit 1
-          fi
-          grep -q 'assets/js/app.js?v=26' ./src/SuvidhaPremium/wwwroot/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('./src/SuvidhaPremium/wwwroot/assets/js/app.js').read_text(encoding='utf-8')
+          good = chr(36) * 2 + "('.period-btn').forEach"
+          bad = chr(36) + "('.period-btn').forEach"
+          if good not in s:
+              raise SystemExit('Manual calendar querySelectorAll click handler missing')
+          if bad in s.replace(good, ''):
+              raise SystemExit('Broken single-element period selector found')
+          PY
+          grep -q 'assets/js/app.js?v=27' ./src/SuvidhaPremium/wwwroot/index.html
 
       - name: Generate temporary SQL password
         shell: bash
