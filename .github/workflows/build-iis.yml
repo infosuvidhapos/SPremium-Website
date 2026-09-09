@@ -71,7 +71,7 @@ jobs:
           if bad in s.replace(good, ''):
               raise SystemExit('Broken single-element period selector found')
           PY
-          grep -q 'assets/js/app.js?v=31' ./src/SuvidhaPremium/wwwroot/index.html
+          grep -q 'assets/js/app.js?v=32' ./src/SuvidhaPremium/wwwroot/index.html
 
       - name: Generate temporary SQL password
         shell: bash
