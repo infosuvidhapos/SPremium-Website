@@ -517,6 +517,21 @@ StoreType=@type,LicenseVersion=@ver,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId
     public Task<bool> UnbindDeviceAsync(Guid id)=>ExecBoolAsync("DELETE dbo.Devices WHERE DeviceId=@id",("@id",id));
     public Task TouchDeviceAsync(Guid id)=>ExecAsync("UPDATE dbo.Devices SET LastSeenAtUtc=SYSUTCDATETIME() WHERE DeviceId=@id",("@id",id));
 
+    public async Task<PosProfileData?> GetPosProfileAsync(string code,string fp)
+    {
+        await using var c=Conn(); await c.OpenAsync();
+        var sql=@"SELECT o.OutletCode,o.OutletName,o.Address,o.Mobile,o.GstNo,o.StoreType,o.ValidFromUtc,o.ValidUntilUtc,o.UpdatedAtUtc,o.IsBlocked,d.IsBlocked
+FROM dbo.Outlets o
+JOIN dbo.Devices d ON d.OutletId=o.OutletId
+WHERE o.OutletCode=@c AND d.DeviceFingerprint=@f";
+        await using var cmd=new SqlCommand(sql,c); P(cmd,"@c",code); P(cmd,"@f",fp);
+        await using var r=await cmd.ExecuteReaderAsync();
+        if(!await r.ReadAsync()) return null;
+        return new(
+            r.GetString(0),r.GetString(1),N(r,2),N(r,3),N(r,4),r.GetString(5),
+            r.GetDateTime(6),r.GetDateTime(7),r.GetDateTime(8),r.GetBoolean(9),r.GetBoolean(10));
+    }
+
     public Task<bool> UpdatePosProfileAsync(Guid id,string name,string? address,string? mobile,string? gstNo)
         => ExecBoolAsync("UPDATE dbo.Outlets SET OutletName=@n,Address=@a,Mobile=@m,GstNo=@g,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id",("@n",name),("@a",address),("@m",mobile),("@g",gstNo),("@id",id));
 
