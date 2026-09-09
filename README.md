@@ -137,3 +137,7 @@ Database/                 Create / backup / restore SQL scripts
 Deploy/                   IIS and production-config scripts
 .github/workflows/        GitHub build → IIS ZIP
 ```
+
+## Central connection architecture
+
+POS clients must never connect directly to the Central SQL Server. Every POS talks only to `http://suvidhapremium.suvidhapos.in/` and the Central Website/API connects to SQL using `ConnectionStrings:CentralDb` from `appsettings.Production.json`. If the SQL Server IP or port changes, only the IIS production configuration is updated; deployed POS clients require no SQL endpoint change.

@@ -39,3 +39,13 @@ IMPORTANT:
 - 04_CreateAppLogin.sql me bhi SAME password dalna hai.
 - Production internet hosting ke liye HTTPS setup ke baad RequireHttps ko true karein.
 - Real SQL password public GitHub repository me commit na karein. Private repo use karein ya IIS server par build ke baad file edit karein.
+
+ARCHITECTURE RULE - IMPORTANT
+=============================
+- POS software NEVER connects to this SQL Server directly.
+- Every POS calls only: http://suvidhapremium.suvidhapos.in/
+- Central Website/API alone connects to SQL Server.
+- If SQL Server IP/port changes, update ONLY the IIS server file:
+    appsettings.Production.json -> ConnectionStrings -> CentralDb
+- POS installations do NOT need any change/reinstall when SQL Server IP changes.
+- After changing CentralDb on IIS, recycle the SuvidhaPOSCentral App Pool.
