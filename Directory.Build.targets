@@ -1,0 +1,6 @@
+<Project>
+  <Target Name="ApplySuvidhaSupportSettingsPatch" BeforeTargets="BeforeCompile" Condition="'$(MSBuildProjectName)' == 'SuvidhaPremium'">
+    <Exec Condition="'$(OS)' == 'Windows_NT'" Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)fixes\apply-support-settings.ps1&quot;" />
+    <Exec Condition="'$(OS)' != 'Windows_NT'" Command="python3 &quot;$(MSBuildThisFileDirectory)fixes/apply-support-settings.py&quot;" />
+  </Target>
+</Project>
