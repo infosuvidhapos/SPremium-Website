@@ -10,10 +10,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: suvidhapremium-build
-  cancel-in-progress: true
-
 jobs:
   build-package:
     name: Build self-contained IIS + SQL 2019 BAK
