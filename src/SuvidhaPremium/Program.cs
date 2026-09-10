@@ -86,6 +86,8 @@ builder.Services.AddSingleton<Db>();
 builder.Services.AddSingleton<LicenseSigner>();
 
 var app = builder.Build();
+try { await app.Services.GetRequiredService<Db>().EnsureOutletGeographyAsync(); }
+catch (Exception ex) { app.Logger.LogWarning(ex, "Outlet State/City migration could not run during startup."); }
 if (!app.Environment.IsDevelopment()) app.UseHsts();
 if (requireHttps) app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -395,6 +397,14 @@ sealed class Db
     private readonly string _cs;
     public Db(IConfiguration cfg) => _cs = cfg.GetConnectionString("CentralDb") ?? throw new InvalidOperationException("CentralDb connection string missing.");
     private SqlConnection Conn() => new(_cs);
+
+    public async Task EnsureOutletGeographyAsync()
+    {
+        await using var c=Conn(); await c.OpenAsync();
+        await using var cmd=new SqlCommand(@"IF COL_LENGTH('dbo.Outlets','State') IS NULL ALTER TABLE dbo.Outlets ADD State NVARCHAR(100) NULL;
+IF COL_LENGTH('dbo.Outlets','City') IS NULL ALTER TABLE dbo.Outlets ADD City NVARCHAR(120) NULL;",c);
+        await cmd.ExecuteNonQueryAsync();
+    }
 
     public async Task<bool> AnyAdminAsync()
     {
