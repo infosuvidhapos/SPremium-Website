@@ -333,6 +333,8 @@ app.MapGet("/api/pos/profile", async (string? outletCode, string? deviceFingerpr
         outletCode = profile.OutletCode,
         outletName = profile.OutletName,
         address = profile.Address,
+        state = profile.State,
+        city = profile.City,
         mobile = profile.Mobile,
         gstNo = profile.GstNo,
         storeType = profile.StoreType,
@@ -349,9 +351,9 @@ app.MapPost("/api/pos/profile", async (PosProfileRequest r, Db db, HttpContext c
     var outlet = await db.GetOutletForDeviceAsync(r.OutletCode.Trim().ToUpperInvariant(), r.DeviceFingerprint.Trim());
     if (outlet is null || outlet.DeviceBlocked || outlet.IsBlocked)
         return Results.Json(new { message = "Device is not authorized." }, statusCode: 403);
-    var ok = await db.UpdatePosProfileAsync(outlet.OutletId, r.OutletName.Trim(), r.Address, r.Mobile, r.GstNo);
+    var ok = await db.UpdatePosProfileAsync(outlet.OutletId, r.OutletName.Trim(), r.Address, r.Mobile, r.GstNo, r.State, r.City);
     if (!ok) return Results.NotFound(new { message = "Outlet not found." });
-    await db.AuditAsync(null, "POS_PROFILE_UPDATED", "Outlet", outlet.OutletId.ToString(), "Outlet name/contact/GST/address updated from POS. Store Type and Validity were not changed.", ctx);
+    await db.AuditAsync(null, "POS_PROFILE_UPDATED", "Outlet", outlet.OutletId.ToString(), "Outlet name/contact/GST/address/state/city updated from POS. Store Type and Validity were not changed.", ctx);
     return Results.Ok(new { message = "Outlet profile updated. Store Type and Validity remain centrally controlled." });
 });
 
@@ -378,14 +380,14 @@ static Guid? CurrentAdmin(HttpContext ctx) => Guid.TryParse(ctx.User.FindFirstVa
 record FirstAdminRequest(string FullName, string Email, string Password, string SetupKey);
 record LoginRequest(string Email, string Password, bool RememberMe = false);
 record CreateAdminRequest(string FullName, string Email, string Password, string Role);
-record CreateOutletRequest(string OutletName, string? Address, string? Mobile, string? GstNo, string StoreType, int ValidityDays);
-record UpdateOutletRequest(string OutletName, string? Address, string? Mobile, string? GstNo, string StoreType);
+record CreateOutletRequest(string OutletName, string? Address, string? Mobile, string? GstNo, string StoreType, int ValidityDays, string? State=null, string? City=null);
+record UpdateOutletRequest(string OutletName, string? Address, string? Mobile, string? GstNo, string StoreType, string? State=null, string? City=null);
 record RenewRequest(int? Days, DateTime? ValidUntilDate);
 record BlockRequest(bool Blocked);
 record PosActivateRequest(string OutletCode, string ActivationCode, string DeviceFingerprint, string? DeviceName);
 record PosCheckRequest(string OutletCode, string DeviceFingerprint);
-record PosProfileRequest(string OutletCode, string DeviceFingerprint, string OutletName, string? Address, string? Mobile, string? GstNo);
-record PosProfileData(string OutletCode,string OutletName,string? Address,string? Mobile,string? GstNo,string StoreType,DateTime ValidFromUtc,DateTime ValidUntilUtc,DateTime UpdatedAtUtc,bool OutletBlocked,bool DeviceBlocked);
+record PosProfileRequest(string OutletCode, string DeviceFingerprint, string OutletName, string? Address, string? Mobile, string? GstNo, string? State=null, string? City=null);
+record PosProfileData(string OutletCode,string OutletName,string? Address,string? State,string? City,string? Mobile,string? GstNo,string StoreType,DateTime ValidFromUtc,DateTime ValidUntilUtc,DateTime UpdatedAtUtc,bool OutletBlocked,bool DeviceBlocked);
 record LicenseResponse(string Status, string Token, DateTime ValidUntilUtc, string StoreType, string OutletCode, DateTime ServerTimeUtc, string KeyId);
 
 sealed class Db
@@ -437,11 +439,11 @@ SELECT COUNT(*) FROM dbo.Devices WHERE IsBlocked=0;";
     public async Task<List<object>> GetOutletsAsync()
     {
         var list=new List<object>(); await using var c=Conn(); await c.OpenAsync();
-        var sql=@"SELECT o.OutletId,o.OutletCode,o.LicenseCode,o.OutletName,o.Address,o.Mobile,o.GstNo,o.StoreType,o.ValidFromUtc,o.ValidUntilUtc,o.IsBlocked,o.LicenseVersion,
+        var sql=@"SELECT o.OutletId,o.OutletCode,o.LicenseCode,o.OutletName,o.Address,o.State,o.City,o.Mobile,o.GstNo,o.StoreType,o.ValidFromUtc,o.ValidUntilUtc,o.IsBlocked,o.LicenseVersion,
 (SELECT TOP 1 d.DeviceName FROM dbo.Devices d WHERE d.OutletId=o.OutletId ORDER BY d.BoundAtUtc DESC) DeviceName
 FROM dbo.Outlets o ORDER BY o.CreatedAtUtc DESC";
         await using var cmd=new SqlCommand(sql,c); await using var r=await cmd.ExecuteReaderAsync();
-        while(await r.ReadAsync()) list.Add(new { outletId=r.GetGuid(0),outletCode=r.GetString(1),licenseCode=r.GetString(2),outletName=r.GetString(3),address=N(r,4),mobile=N(r,5),gstNo=N(r,6),storeType=r.GetString(7),validFromUtc=r.GetDateTime(8),validUntilUtc=r.GetDateTime(9),isBlocked=r.GetBoolean(10),licenseVersion=r.GetInt32(11),deviceName=N(r,12),status=Status(r.GetBoolean(10),r.GetDateTime(9)) });
+        while(await r.ReadAsync()) list.Add(new { outletId=r.GetGuid(0),outletCode=r.GetString(1),licenseCode=r.GetString(2),outletName=r.GetString(3),address=N(r,4),state=N(r,5),city=N(r,6),mobile=N(r,7),gstNo=N(r,8),storeType=r.GetString(9),validFromUtc=r.GetDateTime(10),validUntilUtc=r.GetDateTime(11),isBlocked=r.GetBoolean(12),licenseVersion=r.GetInt32(13),deviceName=N(r,14),status=Status(r.GetBoolean(12),r.GetDateTime(11)) });
         return list;
     }
 
@@ -452,9 +454,9 @@ FROM dbo.Outlets o ORDER BY o.CreatedAtUtc DESC";
         {
             long n; await using(var seq=new SqlCommand("SELECT NEXT VALUE FOR dbo.OutletNumberSequence",c,(SqlTransaction)tx)){n=Convert.ToInt64(await seq.ExecuteScalarAsync());}
             var id=Guid.NewGuid(); var code=$"OUT-{n:000000}"; var lic=$"LIC-{DateTime.UtcNow:yy}-{n:000000}"; var until=DateTime.UtcNow.Date.AddDays(r.ValidityDays).AddSeconds(-1);
-            var sql=@"INSERT dbo.Outlets(OutletId,OutletCode,LicenseCode,OutletName,Address,Mobile,GstNo,StoreType,ValidFromUtc,ValidUntilUtc,ActivationCodeHash,CreatedByAdminId)
-VALUES(@id,@code,@lic,@name,@addr,@mobile,@gst,@type,SYSUTCDATETIME(),@until,@act,@admin)";
-            await using var cmd=new SqlCommand(sql,c,(SqlTransaction)tx); P(cmd,"@id",id);P(cmd,"@code",code);P(cmd,"@lic",lic);P(cmd,"@name",r.OutletName.Trim());P(cmd,"@addr",r.Address);P(cmd,"@mobile",r.Mobile);P(cmd,"@gst",r.GstNo);P(cmd,"@type",r.StoreType.Trim());P(cmd,"@until",until);P(cmd,"@act",activationHash);P(cmd,"@admin",adminId);
+            var sql=@"INSERT dbo.Outlets(OutletId,OutletCode,LicenseCode,OutletName,Address,State,City,Mobile,GstNo,StoreType,ValidFromUtc,ValidUntilUtc,ActivationCodeHash,CreatedByAdminId)
+VALUES(@id,@code,@lic,@name,@addr,@state,@city,@mobile,@gst,@type,SYSUTCDATETIME(),@until,@act,@admin)";
+            await using var cmd=new SqlCommand(sql,c,(SqlTransaction)tx); P(cmd,"@id",id);P(cmd,"@code",code);P(cmd,"@lic",lic);P(cmd,"@name",r.OutletName.Trim());P(cmd,"@addr",r.Address);P(cmd,"@state",r.State);P(cmd,"@city",r.City);P(cmd,"@mobile",r.Mobile);P(cmd,"@gst",r.GstNo);P(cmd,"@type",r.StoreType.Trim());P(cmd,"@until",until);P(cmd,"@act",activationHash);P(cmd,"@admin",adminId);
             await cmd.ExecuteNonQueryAsync(); await tx.CommitAsync();
             return new(id,code,lic,r.OutletName.Trim(),r.StoreType.Trim(),until);
         } catch { await tx.RollbackAsync(); throw; }
@@ -472,9 +474,9 @@ VALUES(@id,@code,@lic,@name,@addr,@mobile,@gst,@type,SYSUTCDATETIME(),@until,@ac
         }
         var typeChanged=!string.Equals(oldType,r.StoreType,StringComparison.OrdinalIgnoreCase);
         var newVersion=typeChanged?oldVersion+1:oldVersion;
-        var sql=@"UPDATE dbo.Outlets SET OutletName=@name,Address=@addr,Mobile=@mobile,GstNo=@gst,
+        var sql=@"UPDATE dbo.Outlets SET OutletName=@name,Address=@addr,State=@state,City=@city,Mobile=@mobile,GstNo=@gst,
 StoreType=@type,LicenseVersion=@ver,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id";
-        await using var cmd=new SqlCommand(sql,c,(SqlTransaction)tx);P(cmd,"@name",r.OutletName);P(cmd,"@addr",r.Address);P(cmd,"@mobile",r.Mobile);P(cmd,"@gst",r.GstNo);P(cmd,"@type",r.StoreType);P(cmd,"@ver",newVersion);P(cmd,"@id",id);
+        await using var cmd=new SqlCommand(sql,c,(SqlTransaction)tx);P(cmd,"@name",r.OutletName);P(cmd,"@addr",r.Address);P(cmd,"@state",r.State);P(cmd,"@city",r.City);P(cmd,"@mobile",r.Mobile);P(cmd,"@gst",r.GstNo);P(cmd,"@type",r.StoreType);P(cmd,"@ver",newVersion);P(cmd,"@id",id);
         await cmd.ExecuteNonQueryAsync();
         if(typeChanged)
         {
@@ -517,7 +519,7 @@ StoreType=@type,LicenseVersion=@ver,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId
     public async Task<PosProfileData?> GetPosProfileAsync(string code,string fp)
     {
         await using var c=Conn(); await c.OpenAsync();
-        var sql=@"SELECT o.OutletCode,o.OutletName,o.Address,o.Mobile,o.GstNo,o.StoreType,o.ValidFromUtc,o.ValidUntilUtc,o.UpdatedAtUtc,o.IsBlocked,d.IsBlocked
+        var sql=@"SELECT o.OutletCode,o.OutletName,o.Address,o.State,o.City,o.Mobile,o.GstNo,o.StoreType,o.ValidFromUtc,o.ValidUntilUtc,o.UpdatedAtUtc,o.IsBlocked,d.IsBlocked
 FROM dbo.Outlets o
 JOIN dbo.Devices d ON d.OutletId=o.OutletId
 WHERE o.OutletCode=@c AND d.DeviceFingerprint=@f";
@@ -525,12 +527,12 @@ WHERE o.OutletCode=@c AND d.DeviceFingerprint=@f";
         await using var r=await cmd.ExecuteReaderAsync();
         if(!await r.ReadAsync()) return null;
         return new(
-            r.GetString(0),r.GetString(1),N(r,2),N(r,3),N(r,4),r.GetString(5),
-            r.GetDateTime(6),r.GetDateTime(7),r.GetDateTime(8),r.GetBoolean(9),r.GetBoolean(10));
+            r.GetString(0),r.GetString(1),N(r,2),N(r,3),N(r,4),N(r,5),N(r,6),r.GetString(7),
+            r.GetDateTime(8),r.GetDateTime(9),r.GetDateTime(10),r.GetBoolean(11),r.GetBoolean(12));
     }
 
-    public Task<bool> UpdatePosProfileAsync(Guid id,string name,string? address,string? mobile,string? gstNo)
-        => ExecBoolAsync("UPDATE dbo.Outlets SET OutletName=@n,Address=@a,Mobile=@m,GstNo=@g,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id",("@n",name),("@a",address),("@m",mobile),("@g",gstNo),("@id",id));
+    public Task<bool> UpdatePosProfileAsync(Guid id,string name,string? address,string? mobile,string? gstNo,string? state,string? city)
+        => ExecBoolAsync("UPDATE dbo.Outlets SET OutletName=@n,Address=@a,State=@s,City=@c,Mobile=@m,GstNo=@g,UpdatedAtUtc=SYSUTCDATETIME() WHERE OutletId=@id",("@n",name),("@a",address),("@s",state),("@c",city),("@m",mobile),("@g",gstNo),("@id",id));
 
     public async Task<List<object>> GetDevicesAsync()
     {
