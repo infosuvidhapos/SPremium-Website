@@ -36,6 +36,8 @@ CREATE TABLE dbo.Outlets(
     LicenseCode NVARCHAR(40) NOT NULL,
     OutletName NVARCHAR(180) NOT NULL,
     Address NVARCHAR(500) NULL,
+    State NVARCHAR(100) NULL,
+    City NVARCHAR(120) NULL,
     Mobile NVARCHAR(30) NULL,
     GstNo NVARCHAR(30) NULL,
     StoreType NVARCHAR(50) NOT NULL,
@@ -50,6 +52,9 @@ CREATE TABLE dbo.Outlets(
     LastRenewedAtUtc DATETIME2(0) NULL,
     CONSTRAINT FK_Outlets_Admin FOREIGN KEY(CreatedByAdminId) REFERENCES dbo.AdminUsers(AdminId)
 );
+GO
+IF COL_LENGTH('dbo.Outlets','State') IS NULL ALTER TABLE dbo.Outlets ADD State NVARCHAR(100) NULL;
+IF COL_LENGTH('dbo.Outlets','City') IS NULL ALTER TABLE dbo.Outlets ADD City NVARCHAR(120) NULL;
 GO
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE name='UX_Outlets_Code' AND object_id=OBJECT_ID('dbo.Outlets')) CREATE UNIQUE INDEX UX_Outlets_Code ON dbo.Outlets(OutletCode);
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE name='UX_Outlets_LicenseCode' AND object_id=OBJECT_ID('dbo.Outlets')) CREATE UNIQUE INDEX UX_Outlets_LicenseCode ON dbo.Outlets(LicenseCode);
